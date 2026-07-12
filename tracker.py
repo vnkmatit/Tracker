@@ -21,10 +21,7 @@ supabase: Client = init_connection()
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
 # 1. Define a fragment function that automatically updates every 3 seconds
-@st.fragment(run_every="3s")
-def render_live_dashboard():
-    # Put your database fetching code right inside it
-# 1. The decorator goes FIRST, touching the left edge (no spaces)
+
 @st.fragment(run_every="3s")
 def render_live_dashboard():
     # 2. Everything inside the function MUST have 4 spaces of indentation
