@@ -74,7 +74,7 @@ else:
     st.sidebar.info("Regular members can view the leaderboard on the right. Trainers must log in to record stats.")
 
 # --- MAIN WINDOW: PUBLIC LEADERBOARD ---
-st.subheader("🏆 Clan Leaderboard")
+st.subheader("Active training stats")
 
 try:
     # Pull data from the cloud, sorted by highest XP first
