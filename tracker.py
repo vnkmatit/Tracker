@@ -1,5 +1,4 @@
 import streamlit as st
-import time
 from supabase import create_client, Client
 
 # --- DATABASE CONNECTION ---
@@ -15,21 +14,20 @@ supabase: Client = init_connection()
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
 
-@st.fragment(run_every="3s")
-def render_live_dashboard():
-    # Use a generic try/except to catch any rendering errors
-    try:
-        response = supabase.table("clan_members").select("*").execute()
-        st.subheader("Active training stats")
-        
-        if response.data:
-            # We are using use_container_width=True to avoid the SyntaxErrors
-            st.dataframe(response.data, use_container_width=True)
-        else:
-            st.info("No active clan members logged yet.")
-    except Exception as e:
-        st.error(f"Error loading dashboard: {e}")
-
-# Render UI
 st.title("The Suilerua Bloodline dashboard")
-render_live_dashboard()
+
+# A manual button to refresh the data safely
+if st.button("Refresh Data"):
+    st.rerun()
+
+try:
+    response = supabase.table("clan_members").select("*").execute()
+    st.subheader("Active training stats")
+    
+    if response.data:
+        # Stable method to display data
+        st.dataframe(response.data, use_container_width=True)
+    else:
+        st.info("No active clan members logged yet.")
+except Exception as e:
+    st.error(f"Error loading dashboard: {e}")
