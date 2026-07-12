@@ -17,10 +17,10 @@ def init_connection():
 supabase: Client = init_connection()
 
 # --- WEB PAGE LAYOUT ---
-st.set_page_config(page_title="Zo Samurai Clan Tracker", page_icon="⚔️", layout="wide")
+st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
 
-st.title("⚔️ Zo Samurai Training Dashboard")
-st.markdown("Welcome to the official clan database. Track your training XP, combat kills, and active warnings.")
+st.title("The Suilerua Bloodline dashboard")
+st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
 
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
