@@ -1,5 +1,7 @@
 import streamlit as st
+import time
 from supabase import create_client, Client
+from streamlit_autorefresh import st_autorefresh
 
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
@@ -18,7 +20,8 @@ supabase: Client = init_connection()
 
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
-
+# Force the entire page to refresh every 5 seconds
+st_autorefresh(interval=5000, limit=None, key="clan_dashboard_refresh")
 st.title("The Suilerua Bloodline dashboard")
 st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
 
@@ -33,7 +36,6 @@ if password_input == TRAINER_PASSWORD:
     
     # Fetch active member names for the dropdown list
     try:
-import time
 
 # By checking against a dynamic timestamp, the web request changes every 5 seconds, forcing a live sync
 response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
