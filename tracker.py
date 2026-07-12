@@ -1,33 +1,33 @@
 import streamlit as st
+import time
 from supabase import create_client, Client
 
-# --- DATABASE CONNECTION ---
+# --- SETUP ---
 SUPABASE_URL = "https://xvlipedpfyngtwgnrpzt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bGlwZWRwZnluZ3R3Z25ycHp0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mzg1MjcwNCwiZXhwIjoyMDk5NDI4NzA0fQ.sbc4c1g37cCSxw6ReLOGjotIfs13PFyqumwxrMRgyWk"
+SUPABASE_KEY = "..." # Use your key
 
 @st.cache_resource
 def init_connection():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
-supabase: Client = init_connection()
-
-# --- WEB PAGE LAYOUT ---
-st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
+supabase = init_connection()
 
 st.title("The Suilerua Bloodline dashboard")
 
-# A manual button to refresh the data safely
-if st.button("Refresh Data"):
-    st.rerun()
+# Placeholders for the dynamic content
+status_placeholder = st.empty()
 
-try:
-    response = supabase.table("clan_members").select("*").execute()
-    st.subheader("Active training stats")
+# Simple auto-refresh loop (use with caution in Cloud environments)
+while True:
+    with status_placeholder.container():
+        try:
+            response = supabase.table("clan_members").select("*").execute()
+            if response.data:
+                st.subheader("Active training stats")
+                st.dataframe(response.data, use_container_width=True)
+            else:
+                st.info("No active clan members.")
+        except Exception as e:
+            st.error(f"Sync error: {e}")
     
-    if response.data:
-        # Stable method to display data
-        st.dataframe(response.data, use_container_width=True)
-    else:
-        st.info("No active clan members logged yet.")
-except Exception as e:
-    st.error(f"Error loading dashboard: {e}")
+    time.sleep(5) # Wait 5 seconds before next refresh
