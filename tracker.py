@@ -32,7 +32,12 @@ def render_live_dashboard():
         existing_users = []
 
     # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
-    st.write(existing_users)
+   st.subheader("Active training stats")
+    if existing_users:
+        # Renders the username list into a beautiful clean table grid
+        st.dataframe(existing_users, column_config={"value": "Clan Members"}, use_container_width=True)
+    else:
+        st.info("No active clan members logged yet.")
 
 # 1. Print the title and welcome text first so they sit at the top of the webpage
 st.title("The Suilerua Bloodline dashboard")
