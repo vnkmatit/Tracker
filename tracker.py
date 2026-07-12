@@ -92,7 +92,7 @@ try:
                 "Active Warnings": member['warnings']
             })
     st.dataframe(formatted_list)
-    else:
+else:
         st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
 import traceback
 
