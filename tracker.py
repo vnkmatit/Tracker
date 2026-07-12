@@ -3,7 +3,6 @@ from supabase import create_client, Client
 
 # --- SETUP ---
 SUPABASE_URL = "https://xvlipedpfyngtwgnrpzt.supabase.co"
-# REPLACE THIS WITH YOUR ACTUAL SERVICE_ROLE KEY FROM SUPABASE SETTINGS
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bGlwZWRwZnluZ3R3Z25ycHp0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mzg1MjcwNCwiZXhwIjoyMDk5NDI4NzA0fQ.sbc4c1g37cCSxw6ReLOGjotIfs13PFyqumwxrMRgyWk" 
 
 @st.cache_resource
