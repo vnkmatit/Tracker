@@ -32,10 +32,13 @@ def render_live_dashboard():
         existing_users = []
 
   # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
+  # 1. Print the header inside the live-refresh loop
     st.subheader("Active training stats")
+    
     if existing_users:
-        # Renders the username list into a beautiful clean table grid
-        st.dataframe(existing_users, column_config={"value": "Clan Members"}, use_container_width=True)
+        # 2. Swap this out to display your FULL stats table response instead of just the usernames!
+        # If your database query fetches all columns (*), 'response.data' contains the whole row details.
+        st.dataframe(response.data, use_container_width=True)
     else:
         st.info("No active clan members logged yet.")
 
