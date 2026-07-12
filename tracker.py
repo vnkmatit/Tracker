@@ -2,7 +2,6 @@ import streamlit as st
 import time
 from supabase import create_client, Client
 
-
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
 SUPABASE_URL = "https://xvlipedpfyngtwgnrpzt.supabase.co"
@@ -20,20 +19,19 @@ supabase: Client = init_connection()
 
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
-# 1. Define a fragment function that automatically updates every 3 seconds
 
+# 1. Define a fragment function that automatically updates every 3 seconds
 @st.fragment(run_every="3s")
 def render_live_dashboard():
     try:
-        # 1. Fetch data safely with cache-busting
+        # Fetch data safely with cache-busting
         response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
         
-        # 2. Show the header inside the loop
+        # Show the header inside the loop
         st.subheader("Active training stats")
         
-        # 3. Check 'response.data' directly instead of 'existing_users'
+        # Check 'response.data' directly
         if response.data:
-            # We use use_container_width=True (Standard Streamlit parameters only)
             st.dataframe(response.data, use_container_width=True)
         else:
             st.info("No active clan members logged yet.")
@@ -41,23 +39,13 @@ def render_live_dashboard():
     except Exception as e:
         st.error("Live sync momentarily interrupted.")
 
-  # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
-  # 1. Print the header inside the live-refresh loop
-    st.subheader("Active training stats")
-    
-   if response.data:
-        # 2. Swap this out to display your FULL stats table response instead of just the usernames!
-        # If your database query fetches all columns (*), 'response.data' contains the whole row details.
-       st.dataframe(response.data, use_container_width=True)
-    else:
-        st.info("No active clan members logged yet.")
-
-# 1. Print the title and welcome text first so they sit at the top of the webpage
+# 2. Print the title and welcome text first so they sit at the top of the webpage
 st.title("The Suilerua Bloodline dashboard")
 st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
 
-# 2. Call the live fragment loop right below the titles
+# 3. Call the live fragment loop right below the titles
 render_live_dashboard()
+
 
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
@@ -109,5 +97,3 @@ else:
     if password_input:
         st.sidebar.error("Incorrect Password")
     st.sidebar.info("Regular members can view the leaderboard on the right. Trainers must log in to record stats.")
-
-
