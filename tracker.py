@@ -25,30 +25,30 @@ st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="âš”ï¸
 @st.fragment(run_every="3s")
 def render_live_dashboard():
     try:
-        # 1. Fetch data safely
+        # 1. Fetch data safely with cache-busting
         response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
         
-        # 2. Show the header inside the fragment loop
+        # 2. Show the header inside the loop
         st.subheader("Active training stats")
         
+        # 3. Check 'response.data' directly instead of 'existing_users'
         if response.data:
-            # 3. Clean table layout using the updated width standard to prevent console warnings
-            st.dataframe(response.data, width="stretch")
+            # We use use_container_width=True (Standard Streamlit parameters only)
+            st.dataframe(response.data, use_container_width=True)
         else:
             st.info("No active clan members logged yet.")
             
     except Exception as e:
-        # Fail silently or show a clean message if the database drops connection
         st.error("Live sync momentarily interrupted.")
 
   # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
   # 1. Print the header inside the live-refresh loop
     st.subheader("Active training stats")
     
-    if existing_users:
+   if response.data:
         # 2. Swap this out to display your FULL stats table response instead of just the usernames!
         # If your database query fetches all columns (*), 'response.data' contains the whole row details.
-        st.dataframe(response.data, width='stretch')
+       st.dataframe(response.data, use_container_width=True)
     else:
         st.info("No active clan members logged yet.")
 
