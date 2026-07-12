@@ -31,8 +31,8 @@ def render_live_dashboard():
     except Exception:
         existing_users = []
 
-    # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
-   st.subheader("Active training stats")
+  # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
+    st.subheader("Active training stats")
     if existing_users:
         # Renders the username list into a beautiful clean table grid
         st.dataframe(existing_users, column_config={"value": "Clan Members"}, use_container_width=True)
