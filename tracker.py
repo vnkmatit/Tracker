@@ -24,11 +24,26 @@ st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="âš”ï¸
 @st.fragment(run_every="3s")
 def render_live_dashboard():
     # Put your database fetching code right inside it
+   # Create a native auto-refresh fragment that runs every 3 seconds
+@st.fragment(run_every="3s")
+def render_live_dashboard():
+    # 1. Fetch live data from Supabase inside the loop
     try:
         response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
         existing_users = [row['username'] for row in response.data]
     except Exception:
         existing_users = []
+        
+    # 2. Put your table display code right here below the query!
+    # (For example, if you use st.dataframe or st.write to display the leaderboard)
+    st.subheader("Active training stats")
+    if existing_users:
+        st.write(existing_users) # Swap this with your actual table display code if needed
+    else:
+        st.write("No active data loaded.")
+
+# 3. Call the function in your main script body to draw it on the screen
+render_live_dashboard()
         
     # --- Put the rest of your scoreboard/leaderboard tables and charts here ---
     # Example: st.dataframe(existing_users) or whatever displays your data
