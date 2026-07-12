@@ -20,15 +20,9 @@ supabase: Client = init_connection()
 
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
-# Force the browser to refresh the entire page every 3 seconds
-st.components.v1.html(
-    """
-    <script>
-        setInterval(() => {
-            window.parent.location.reload();
-        }, 3000);
-    </script>
-    """,
+# Create a tiny invisible iframe to trigger a browser reload every 3 seconds
+st.iframe(
+    "data:text/html,<script>setInterval(() => { window.parent.location.reload(); }, 3000);</script>",
     height=0,
     width=0
 )
