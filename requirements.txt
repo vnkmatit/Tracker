@@ -1,3 +1,2 @@
-streamlit
-supabase
-
+streamlit==1.46.1
+supabase==2.16.0
