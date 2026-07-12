@@ -94,5 +94,7 @@ try:
         st.dataframe(formatted_list, width="stretch")
     else:
         st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
-except Exception as e:
-    st.error(f"Failed to connect to cloud database: {e}")
+import traceback
+
+except Exception:
+    st.code(traceback.format_exc())
