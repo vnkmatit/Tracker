@@ -100,27 +100,4 @@ else:
         st.sidebar.error("Incorrect Password")
     st.sidebar.info("Regular members can view the leaderboard on the right. Trainers must log in to record stats.")
 
-# --- MAIN WINDOW: PUBLIC LEADERBOARD ---
-st.subheader("Active training stats")
 
-try:
-    # Pull data from the cloud, sorted by highest XP first
-    data_response = supabase.table("clan_members").select("*").order("xp", desc=True).execute()
-    members_data = data_response.data
-    
-    if members_data:
-        # Format the visual table neatly
-        formatted_list = []
-        for rank, member in enumerate(members_data, start=1):
-            formatted_list.append({
-                "Rank": rank,
-                "Roblox Username": member['username'],
-                "Training XP": member['xp'],
-                "Logged Kills": member['kills'],
-                "Active Warnings": member['warnings']
-            })
-        st.dataframe(formatted_list, width="stretch")
-    else:
-        st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
-except Exception as e:
-    st.error(f"Failed to connect to cloud database: {e}")
