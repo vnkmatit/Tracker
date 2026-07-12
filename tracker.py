@@ -42,6 +42,6 @@ render_live_dashboard()
 
 # --- SIDEBAR: TRAINER PORTAL ---
 # (Keep your existing sidebar logic here, ensuring it is at the bottom)
-    if password_input:
+if password_input:
         st.sidebar.error("Incorrect Password")
     st.sidebar.info("Regular members can view the leaderboard on the right.")
