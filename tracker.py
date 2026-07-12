@@ -34,10 +34,12 @@ def render_live_dashboard():
     # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
     st.write(existing_users)
 
-# 3. Call the function at the very end, back on the left edge (no spaces)
-render_live_dashboard()
+# 1. Print the title and welcome text first so they sit at the top of the webpage
 st.title("The Suilerua Bloodline dashboard")
 st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
+
+# 2. Call the live fragment loop right below the titles
+render_live_dashboard()
 
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
