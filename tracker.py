@@ -9,11 +9,11 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 TRAINER_PASSWORD = "ClanTrainer2026" 
 
 # Initialize connection
-@st.cache_resource
-def init_connection():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-supabase: Client = init_connection()
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    st.exception(e)
+    st.stop()
 
 # --- WEB PAGE LAYOUT ---
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
