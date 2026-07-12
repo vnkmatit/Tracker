@@ -1,3 +1,8 @@
+st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
+
+st.title("The Suilerua Bloodline dashboard")
+st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
+
 import streamlit as st
 from supabase import create_client, Client
 
@@ -16,10 +21,6 @@ def init_connection():
 supabase: Client = init_connection()
 
 # --- WEB PAGE LAYOUT ---
-st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
-
-st.title("The Suilerua Bloodline dashboard")
-st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
 
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
