@@ -24,12 +24,22 @@ st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="âš”ï¸
 
 @st.fragment(run_every="3s")
 def render_live_dashboard():
-    # 2. Everything inside the function MUST have 4 spaces of indentation
     try:
+        # 1. Fetch data safely
         response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
-        existing_users = [row['username'] for row in response.data]
-    except Exception:
-        existing_users = []
+        
+        # 2. Show the header inside the fragment loop
+        st.subheader("Active training stats")
+        
+        if response.data:
+            # 3. Clean table layout using the updated width standard to prevent console warnings
+            st.dataframe(response.data, width="stretch")
+        else:
+            st.info("No active clan members logged yet.")
+            
+    except Exception as e:
+        # Fail silently or show a clean message if the database drops connection
+        st.error("Live sync momentarily interrupted.")
 
   # Put whatever scoreboard or data rendering code you have right here (indented 4 spaces)
   # 1. Print the header inside the live-refresh loop
