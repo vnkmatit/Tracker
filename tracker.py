@@ -33,7 +33,10 @@ if password_input == TRAINER_PASSWORD:
     
     # Fetch active member names for the dropdown list
     try:
-        response = supabase.table("clan_members").select("username").execute()
+import time
+
+# By checking against a dynamic timestamp, the web request changes every 5 seconds, forcing a live sync
+response = supabase.table("clan_members").select("*").neq("username", f"cache_bypass_{time.time()}").execute()
         existing_users = [row['username'] for row in response.data]
     except Exception:
         existing_users = []
