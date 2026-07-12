@@ -6,7 +6,6 @@ from supabase import create_client, Client
 SUPABASE_URL = "https://xvlipedpfyngtwgnrpzt.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bGlwZWRwZnluZ3R3Z25ycHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NTI3MDQsImV4cCI6MjA5OTQyODcwNH0.4bgMQTbhA5zCT9OAVdQBNCueXcrcAuoWELDnWF7Eci0"
 TRAINER_PASSWORD = "ClanTrainer2026" 
-
 @st.cache_resource
 def init_connection():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
