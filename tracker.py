@@ -92,7 +92,7 @@ try:
                 "Logged Kills": member['kills'],
                 "Active Warnings": member['warnings']
             })
-        st.dataframe(formatted_list, use_container_width=True)
+        st.dataframe(formatted_list, width="stretch")
     else:
         st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
 except Exception as e:
