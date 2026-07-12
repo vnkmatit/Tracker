@@ -40,6 +40,8 @@ st.markdown("Welcome to the official clan tracking database. Track your training
 st.sidebar.header("Trainer Portal")
 password_input = st.sidebar.text_input("Enter Trainer Password", type="password")
 
+render_live_dashboard()
+
 if password_input == TRAINER_PASSWORD:
     st.sidebar.success("Trainer Access Granted")
     st.sidebar.subheader("Update Member Stats")
