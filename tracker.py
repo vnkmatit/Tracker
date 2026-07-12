@@ -26,7 +26,7 @@ def render_live_dashboard():
         
         if response.data:
             # Use use_container_width=True, NOT width='stretch'
-           st.dataframe(response.data, use_container_width=True)
+           st.dataframe(response.data, width='stretch')
         else:
             st.info("No active clan members logged yet.")
             
