@@ -48,7 +48,7 @@ def render_live_dashboard():
     if existing_users:
         # 2. Swap this out to display your FULL stats table response instead of just the usernames!
         # If your database query fetches all columns (*), 'response.data' contains the whole row details.
-        st.dataframe(response.data, use_container_width=True)
+        st.dataframe(response.data, width='stretch')
     else:
         st.info("No active clan members logged yet.")
 
