@@ -4,7 +4,7 @@ from supabase import create_client, Client
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
 SUPABASE_URL = "https://xvlipedpfyngtwgnrpzt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bGlwZWRwZnluZ3R3Z25ycHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NTI3MDQsImV4cCI6MjA5OTQyODcwNH0.4bgMQTbhA5zCT9OAVdQBNCueXcrcAuoWELDnWF7Eci0"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bGlwZWRwZnluZ3R3Z25ycHp0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mzg1MjcwNCwiZXhwIjoyMDk5NDI4NzA0fQ.sbc4c1g37cCSxw6ReLOGjotIfs13PFyqumwxrMRgyWk"
 
 # Secret password for trainers to unlock editing tools
 TRAINER_PASSWORD = "ClanTrainer2026" 
