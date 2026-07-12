@@ -36,9 +36,6 @@ def render_live_dashboard():
 st.title("The Suilerua Bloodline dashboard")
 st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
 
-# Call the function exactly once here
-render_live_dashboard()
-
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
 password_input = st.sidebar.text_input("Enter Trainer Password", type="password")
