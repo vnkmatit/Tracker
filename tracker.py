@@ -45,6 +45,17 @@ password_input = st.sidebar.text_input(
 if password_input == TRAINER_PASSWORD:
     st.sidebar.success("Trainer Access Granted")
     st.sidebar.subheader("Update Member Stats")
+    if st.sidebar.button("Reset All Training Stats"):
+    supabase.table("clan_members").update(
+        {
+            "xp": 0,
+            "kills": 0,
+            "warnings": 0
+        }
+    ).neq("username", "").execute()
+
+    st.sidebar.success("All member stats have been reset!")
+    st.rerun()
 
     try:
         response = supabase.table("clan_members").select("username").execute()
