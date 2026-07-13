@@ -19,4 +19,4 @@ st.write("Step 4")
 import pandas as pd
 
 df = pd.DataFrame(response.data)
-st.dataframe(df)
+st.dataframe(df, use_container_width=False)
