@@ -88,16 +88,33 @@ if password_input == TRAINER_PASSWORD:
                 st.rerun()
 
     elif action == "Log Training Stats" and existing_users:
-        if "selected_user" not in st.session_state:
-    st.session_state.selected_user = existing_users[0] if existing_users else None
 
-selected_user = st.sidebar.selectbox(
-    "Select Member",
-    existing_users,
-    index=existing_users.index(st.session_state.selected_user)
-    if st.session_state.selected_user in existing_users else 0,
-    key="selected_user"
-)
+    if "selected_user" not in st.session_state:
+        st.session_state.selected_user = existing_users[0]
+
+    selected_user = st.sidebar.selectbox(
+        "Select Member",
+        existing_users,
+        key="selected_user"
+    )
+
+    xp_to_add = st.sidebar.number_input(
+        "XP to Add",
+        min_value=0,
+        step=1
+    )
+
+    kills_to_add = st.sidebar.number_input(
+        "Kills to Add",
+        min_value=0,
+        step=1
+    )
+
+    warnings_to_add = st.sidebar.number_input(
+        "Warnings to Add",
+        min_value=0,
+        step=1
+    )
 
         xp_to_add = st.sidebar.number_input(
             "XP to Add",
