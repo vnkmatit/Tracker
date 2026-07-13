@@ -119,11 +119,7 @@ if password_input == TRAINER_PASSWORD:
             )
 
             supabase.table("clan_members").update(
-                {
-                    "xp": current["xp"] + xp_to_add,
-                    "kills": current["kills"] + kills_to_add,
-                    "warnings": current["warnings"] + warnings_to_add
-                }
+               "warnings": current["warnings"] + warnings_to_add
             ).eq(
                 "username",
                 selected_user
