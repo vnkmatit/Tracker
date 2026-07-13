@@ -13,3 +13,7 @@ st.write("Step 2")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.write("Step 3")
+response = supabase.table("clan_members").select("*").execute()
+
+st.write("Step 4")
+st.write(response.data)
