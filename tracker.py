@@ -1,6 +1,11 @@
 import streamlit as st
 from supabase import create_client, Client
 
+st.title("The Suilerua Bloodline dashboard")
+st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
+
+st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
+
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -15,11 +20,8 @@ except Exception as e:
     st.exception(e)
     st.stop()
 
-# --- WEB PAGE LAYOUT ---
-st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
 
-st.title("The Suilerua Bloodline dashboard")
-st.markdown("Welcome to the official clan tracking database. Track your training XP, combat kills, and active warnings.")
+
 
 # --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
