@@ -87,12 +87,10 @@ st.subheader("Active training stats")
 import traceback
 
 try:
-    # Pull data from the cloud, sorted by highest XP first
     data_response = supabase.table("clan_members").select("*").order("xp", desc=True).execute()
     members_data = data_response.data
 
     if members_data:
-        # Format the visual table neatly
         formatted_list = []
 
         for rank, member in enumerate(members_data, start=1):
@@ -106,10 +104,10 @@ try:
 
         st.dataframe(formatted_list, use_container_width=True)
 
-st.session_state.last_refresh = datetime.now(timezone.utc)
+        st.session_state.last_refresh = datetime.now(timezone.utc)
 
     else:
-        st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
+        st.info("No members registered in the database yet.")
 
 except Exception:
     st.code(traceback.format_exc())
