@@ -17,4 +17,4 @@ response = supabase.table("clan_members").select("*").execute()
 
 st.write("Step 4")
 st.write(response.data)
-st.dataframe(response.data)
+st.write(response.data)
