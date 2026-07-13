@@ -101,18 +101,6 @@ if password_input == TRAINER_PASSWORD:
             key="selected_user"
         )
 
-        xp_to_add = st.sidebar.number_input(
-            "XP to Add",
-            min_value=0,
-            step=1
-        )
-
-        kills_to_add = st.sidebar.number_input(
-            "Kills to Add",
-            min_value=0,
-            step=1
-        )
-
         warnings_to_add = st.sidebar.number_input(
             "Warnings to Add",
             min_value=0,
