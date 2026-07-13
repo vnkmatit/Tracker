@@ -156,7 +156,7 @@ else:
         "Trainers must log in to record stats."
     )
 # --- MAIN WINDOW: PUBLIC LEADERBOARD ---
-st.subheader("Active training stats")
+st.subheader("Active training warnings")
 
 try:
     data_response = (
