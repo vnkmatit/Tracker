@@ -35,6 +35,7 @@ st.markdown(
 )
 
 # --- SIDEBAR: TRAINER PORTAL ---
+# --- SIDEBAR: TRAINER PORTAL ---
 st.sidebar.header("Trainer Portal")
 
 password_input = st.sidebar.text_input(
@@ -46,6 +47,7 @@ if password_input == TRAINER_PASSWORD:
     st.sidebar.success("Trainer Access Granted")
     st.sidebar.subheader("Update Member Stats")
 
+    # Reset all stats button
     if st.sidebar.button("Reset All Training Stats"):
         supabase.table("clan_members").update(
             {
@@ -58,6 +60,7 @@ if password_input == TRAINER_PASSWORD:
         st.sidebar.success("All member stats have been reset!")
         st.rerun()
 
+    # Get members
     try:
         response = supabase.table("clan_members").select("username").execute()
         existing_users = [row["username"] for row in response.data]
@@ -70,7 +73,10 @@ if password_input == TRAINER_PASSWORD:
     )
 
     if action == "Add/Update Member":
-        new_user = st.sidebar.text_input("Roblox Username").strip()
+
+        new_user = st.sidebar.text_input(
+            "Roblox Username"
+        ).strip()
 
         if st.sidebar.button("Register/Reset Member"):
             if new_user:
@@ -86,58 +92,60 @@ if password_input == TRAINER_PASSWORD:
 
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
-elif action == "Log Training Stats" and existing_users:
-     selected_user = st.sidebar.selectbox(
-        "Select Member",
-        existing_users,
-        key="selected_user"
-    )
 
-    xp_to_add = st.sidebar.number_input(
-        "XP to Add",
-        min_value=0,
-        step=1
-    )
+    elif action == "Log Training Stats" and existing_users:
 
-    kills_to_add = st.sidebar.number_input(
-        "Kills to Add",
-        min_value=0,
-        step=1
-    )
-
-    warnings_to_add = st.sidebar.number_input(
-        "Warnings to Add",
-        min_value=0,
-        step=1
-    )
-
-    if st.sidebar.button("Submit Training Records"):
-        current = (
-            supabase
-            .table("clan_members")
-            .select("*")
-            .eq("username", selected_user)
-            .execute()
-            .data[0]
+        selected_user = st.sidebar.selectbox(
+            "Select Member",
+            existing_users,
+            key="selected_user"
         )
 
-        new_xp = current["xp"] + xp_to_add
-        new_kills = current["kills"] + kills_to_add
-        new_warnings = current["warnings"] + warnings_to_add
+        xp_to_add = st.sidebar.number_input(
+            "XP to Add",
+            min_value=0,
+            step=1
+        )
 
-        supabase.table("clan_members").update(
-            {
-                "xp": new_xp,
-                "kills": new_kills,
-                "warnings": new_warnings
-            }
-        ).eq(
-            "username",
-            selected_user
-        ).execute()
+        kills_to_add = st.sidebar.number_input(
+            "Kills to Add",
+            min_value=0,
+            step=1
+        )
 
-        st.sidebar.success(f"Updated stats for {selected_user}!")
-        st.rerun()
+        warnings_to_add = st.sidebar.number_input(
+            "Warnings to Add",
+            min_value=0,
+            step=1
+        )
+
+        if st.sidebar.button("Submit Training Records"):
+
+            current = (
+                supabase
+                .table("clan_members")
+                .select("*")
+                .eq("username", selected_user)
+                .execute()
+                .data[0]
+            )
+
+            supabase.table("clan_members").update(
+                {
+                    "xp": current["xp"] + xp_to_add,
+                    "kills": current["kills"] + kills_to_add,
+                    "warnings": current["warnings"] + warnings_to_add
+                }
+            ).eq(
+                "username",
+                selected_user
+            ).execute()
+
+            st.sidebar.success(
+                f"Updated stats for {selected_user}!"
+            )
+
+            st.rerun()
 
 else:
     if password_input:
@@ -147,8 +155,6 @@ else:
         "Regular members can view the leaderboard. "
         "Trainers must log in to record stats."
     )
-
-
 # --- MAIN WINDOW: PUBLIC LEADERBOARD ---
 st.subheader("Active training stats")
 
