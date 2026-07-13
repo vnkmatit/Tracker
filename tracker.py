@@ -16,4 +16,7 @@ st.write("Step 3")
 response = supabase.table("clan_members").select("*").execute()
 
 st.write("Step 4")
-st.write(response.data)
+import pandas as pd
+
+df = pd.DataFrame(response.data)
+st.write(df)
