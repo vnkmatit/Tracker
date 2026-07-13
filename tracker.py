@@ -6,7 +6,10 @@ import traceback
 
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
 
-st_autorefresh(interval=10000, key="stats_refresh")
+st_autorefresh(interval=1000, key="stats_refresh")
+
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = datetime.now(timezone.utc)
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -103,6 +106,8 @@ try:
 
         st.dataframe(formatted_list, use_container_width=True)
 
+st.session_state.last_refresh = datetime.now(timezone.utc)
+
     else:
         st.info("No members registered in the database yet. Trainer must log in to register the first recruit.")
 
@@ -111,3 +116,8 @@ except Exception:
 st.session_state.last_refresh = datetime.now(timezone.utc)
 
 st.caption("Last refreshed: just now")
+seconds_ago = int(
+    (datetime.now(timezone.utc) - st.session_state.last_refresh).total_seconds()
+)
+
+st.caption(f"Last refreshed: {seconds_ago} seconds ago")
