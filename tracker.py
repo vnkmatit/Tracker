@@ -3,6 +3,9 @@ from supabase import create_client, Client
 
 
 st.set_page_config(page_title="The Suilerua Bloodline tracker", page_icon="⚔️", layout="wide")
+from streamlit_autorefresh import st_autorefresh
+
+st_autorefresh(interval=10000, key="stats_refresh")
 
 # --- DATABASE CONNECTION ---
 # Replace these with your actual Supabase credentials
