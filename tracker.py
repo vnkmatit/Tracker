@@ -111,11 +111,10 @@ try:
 
 except Exception:
     st.code(traceback.format_exc())
-st.session_state.last_refresh = datetime.now(timezone.utc)
 
-st.caption("Last refreshed: just now")
 seconds_ago = int(
     (datetime.now(timezone.utc) - st.session_state.last_refresh).total_seconds()
 )
 
+st.caption(f"Last refreshed: {seconds_ago} seconds ago")
 st.caption("Auto-refresh: every 10 seconds")
