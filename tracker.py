@@ -191,5 +191,5 @@ seconds_ago = int(
     ).total_seconds()
 )
 
-st.caption(f"Last refreshed: {seconds_ago} seconds ago")
+
 st.caption("Auto-refresh: every 10 seconds")
