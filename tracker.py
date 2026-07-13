@@ -183,9 +183,10 @@ try:
 )
 
         st.dataframe(
-            formatted_list,
-            use_container_width=True
-        )
+    formatted_list,
+    width=600,
+    hide_index=True
+)
 
         # Save when leaderboard was updated
         st.session_state.last_refresh = datetime.now(timezone.utc)
