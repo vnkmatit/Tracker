@@ -256,9 +256,6 @@ seconds_ago = int(
 )
 
 
-st.caption(
-    f"Last refreshed: {seconds_ago} seconds ago"
-)
 
 st.caption(
     "Auto-refresh: every 10 seconds"
