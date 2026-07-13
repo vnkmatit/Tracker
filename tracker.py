@@ -88,10 +88,6 @@ if password_input == TRAINER_PASSWORD:
                 st.rerun()
 
 elif action == "Log Training Stats" and existing_users:
-
-    if "selected_user" not in st.session_state:
-        st.session_state.selected_user = existing_users[0]
-
     selected_user = st.sidebar.selectbox(
         "Select Member",
         existing_users,
@@ -115,33 +111,34 @@ elif action == "Log Training Stats" and existing_users:
         min_value=0,
         step=1
     )
-        if st.sidebar.button("Submit Training Records"):
 
-            current = (
-                supabase
-                .table("clan_members")
-                .select("*")
-                .eq("username", selected_user)
-                .execute()
-                .data[0]
-            )
+    if st.sidebar.button("Submit Training Records"):
+        current = (
+            supabase
+            .table("clan_members")
+            .select("*")
+            .eq("username", selected_user)
+            .execute()
+            .data[0]
+        )
 
-            supabase.table("clan_members").update(
-                {
-                    "xp": current["xp"] + xp_to_add,
-                    "kills": current["kills"] + kills_to_add,
-                    "warnings": current["warnings"] + warnings_to_add
-                }
-            ).eq(
-                "username",
-                selected_user
-            ).execute()
+        new_xp = current["xp"] + xp_to_add
+        new_kills = current["kills"] + kills_to_add
+        new_warnings = current["warnings"] + warnings_to_add
 
-            st.sidebar.success(
-                f"Updated stats for {selected_user}!"
-            )
+        supabase.table("clan_members").update(
+            {
+                "xp": new_xp,
+                "kills": new_kills,
+                "warnings": new_warnings
+            }
+        ).eq(
+            "username",
+            selected_user
+        ).execute()
 
-            st.rerun()
+        st.sidebar.success(f"Updated stats for {selected_user}!")
+        st.rerun()
 
 else:
     if password_input:
