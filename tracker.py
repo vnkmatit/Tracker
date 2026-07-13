@@ -87,7 +87,7 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
-    elif action == "Log Training Stats" and existing_users:
+elif action == "Log Training Stats" and existing_users:
 
     if "selected_user" not in st.session_state:
         st.session_state.selected_user = existing_users[0]
@@ -115,25 +115,6 @@ if password_input == TRAINER_PASSWORD:
         min_value=0,
         step=1
     )
-
-        xp_to_add = st.sidebar.number_input(
-            "XP to Add",
-            min_value=0,
-            step=1
-        )
-
-        kills_to_add = st.sidebar.number_input(
-            "Kills to Add",
-            min_value=0,
-            step=1
-        )
-
-        warnings_to_add = st.sidebar.number_input(
-            "Warnings to Add",
-            min_value=0,
-            step=1
-        )
-
         if st.sidebar.button("Submit Training Records"):
 
             current = (
