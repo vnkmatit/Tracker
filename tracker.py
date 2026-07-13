@@ -175,14 +175,12 @@ try:
 
         for rank, member in enumerate(members_data, start=1):
             formatted_list.append(
-                {
-                    "Rank": rank,
-                    "Roblox Username": member["username"],
-                    "Training XP": member["xp"],
-                    "Logged Kills": member["kills"],
-                    "Active Warnings": member["warnings"]
-                }
-            )
+    {
+        "Rank": rank,
+        "Roblox Username": member["username"],
+        "Active Warnings": member["warnings"]
+    }
+)
 
         st.dataframe(
             formatted_list,
