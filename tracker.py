@@ -86,9 +86,8 @@ if password_input == TRAINER_PASSWORD:
 
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
-
 elif action == "Log Training Stats" and existing_users:
-    selected_user = st.sidebar.selectbox(
+     selected_user = st.sidebar.selectbox(
         "Select Member",
         existing_users,
         key="selected_user"
