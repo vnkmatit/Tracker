@@ -118,12 +118,14 @@ if password_input == TRAINER_PASSWORD:
                 .data[0]
             )
 
-            supabase.table("clan_members").update(
-               "warnings": current["warnings"] + warnings_to_add
-            ).eq(
-                "username",
-                selected_user
-            ).execute()
+         supabase.table("clan_members").update(
+    {
+        "warnings": current["warnings"] + warnings_to_add
+    }
+).eq(
+    "username",
+    selected_user
+).execute()
 
             st.sidebar.success(
                 f"Updated stats for {selected_user}!"
