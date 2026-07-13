@@ -108,3 +108,6 @@ try:
 
 except Exception:
     st.code(traceback.format_exc())
+from datetime import datetime
+
+st.caption(f"Last updated: {datetime.now().strftime('%H:%M:%S')}")
