@@ -32,7 +32,7 @@ except Exception as e:
 st.title("The Suilerua Bloodline dashboard")
 st.markdown(
     "Welcome to the official clan tracking database. "
-    "Track your training warnings, combat kills, and active Glads matches."
+    "Track your training warnings, combat kills, Glads, and TDMS matches."
 )
 
 
@@ -72,7 +72,8 @@ if password_input == TRAINER_PASSWORD:
             "Add/Update Member",
             "Log Stats (Warnings & Kills)",
             "Delete Member",
-            "Manage Glads Match"
+            "Manage Glads Match",
+            "Manage TDMS Match"
         ]
     )
 
@@ -131,14 +132,14 @@ if password_input == TRAINER_PASSWORD:
             }
 
         st.sidebar.markdown("---")
-        t1_name = st.sidebar.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"))
-        t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)))
-        t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100)
+        t1_name = st.sidebar.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"), key="g_t1_name")
+        t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)), key="g_t1_score")
+        t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100, key="g_t1_members")
 
         st.sidebar.markdown("---")
-        t2_name = st.sidebar.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"))
-        t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)))
-        t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=glads_data.get("team_2_members", ""), height=100)
+        t2_name = st.sidebar.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"), key="g_t2_name")
+        t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)), key="g_t2_score")
+        t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=glads_data.get("team_2_members", ""), height=100, key="g_t2_members")
 
         if st.sidebar.button("💾 Update Glads Match"):
             supabase.table("glads_match").upsert({
@@ -152,6 +153,46 @@ if password_input == TRAINER_PASSWORD:
             }).execute()
 
             st.sidebar.success("Glads match score & rosters updated!")
+            st.rerun()
+
+    # ACTION 5: MANAGE TDMS MATCH
+    elif action == "Manage TDMS Match":
+        st.sidebar.subheader("🎯 TDMS Live Match Settings")
+
+        try:
+            tdms_res = supabase.table("tdms_match").select("*").eq("id", 1).execute()
+            tdms_data = tdms_res.data[0] if tdms_res.data else {
+                "team_1_name": "Team 1", "team_1_score": 0, "team_1_members": "",
+                "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
+            }
+        except Exception:
+            tdms_data = {
+                "team_1_name": "Team 1", "team_1_score": 0, "team_1_members": "",
+                "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
+            }
+
+        st.sidebar.markdown("---")
+        tdms_t1_name = st.sidebar.text_input("Team 1 Name", value=tdms_data.get("team_1_name", "Team Alpha"), key="t_t1_name")
+        tdms_t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_1_score", 0)), key="t_t1_score")
+        tdms_t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=tdms_data.get("team_1_members", ""), height=100, key="t_t1_members")
+
+        st.sidebar.markdown("---")
+        tdms_t2_name = st.sidebar.text_input("Team 2 Name", value=tdms_data.get("team_2_name", "Team Bravo"), key="t_t2_name")
+        tdms_t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_2_score", 0)), key="t_t2_score")
+        tdms_t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=tdms_data.get("team_2_members", ""), height=100, key="t_t2_members")
+
+        if st.sidebar.button("💾 Update TDMS Match"):
+            supabase.table("tdms_match").upsert({
+                "id": 1,
+                "team_1_name": tdms_t1_name,
+                "team_1_score": tdms_t1_score,
+                "team_1_members": tdms_t1_members,
+                "team_2_name": tdms_t2_name,
+                "team_2_score": tdms_t2_score,
+                "team_2_members": tdms_t2_members
+            }).execute()
+
+            st.sidebar.success("TDMS match score & rosters updated!")
             st.rerun()
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
@@ -179,7 +220,7 @@ except Exception as e:
 
 
 # ==========================================
-# 1. WARNINGS LEADERBOARD (TOP)
+# 1. WARNINGS LEADERBOARD
 # ==========================================
 st.subheader("Active training warnings")
 
@@ -201,7 +242,7 @@ st.divider()
 
 
 # ==========================================
-# 2. KING OF THE HILL LEADERBOARD (MIDDLE)
+# 2. KING OF THE HILL LEADERBOARD
 # ==========================================
 st.subheader("👑 King of the Hill")
 
@@ -223,7 +264,7 @@ st.divider()
 
 
 # ==========================================
-# 3. GLADS MATCH LIVE SCOREBOARD (BOTTOM)
+# 3. GLADS MATCH LIVE SCOREBOARD
 # ==========================================
 st.subheader("⚔️ Glads Match Live Scoreboard")
 
@@ -232,11 +273,9 @@ try:
     if glads_response.data:
         g_data = glads_response.data[0]
         
-        # Display large score banner
         score_str = f"{g_data['team_1_score']}  —  {g_data['team_2_score']}"
         st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{score_str}</h1>", unsafe_allow_html=True)
         
-        # Two side-by-side columns for Team rosters
         col1, col2 = st.columns(2)
         
         with col1:
@@ -264,6 +303,50 @@ try:
 
 except Exception:
     st.info("Glads match table not initialized yet. Please run the SQL setup command in Supabase.")
+
+st.divider()
+
+
+# ==========================================
+# 4. TDMS MATCH LIVE SCOREBOARD
+# ==========================================
+st.subheader("🎯 TDMS Match Live Scoreboard")
+
+try:
+    tdms_response = supabase.table("tdms_match").select("*").eq("id", 1).execute()
+    if tdms_response.data:
+        t_data = tdms_response.data[0]
+        
+        score_str = f"{t_data['team_1_score']}  —  {t_data['team_2_score']}"
+        st.markdown(f"<h1 style='text-align: center; color: #4B9EFF;'>{score_str}</h1>", unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown(f"### 🛡️ {t_data['team_1_name']} ({t_data['team_1_score']} Wins)")
+            st.caption("Team Roster:")
+            members_1 = t_data['team_1_members'].strip()
+            if members_1:
+                formatted_t1 = "\n".join([f"* {m.strip()}" for m in members_1.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t1)
+            else:
+                st.info("No members assigned yet.")
+
+        with col2:
+            st.markdown(f"### ⚔️ {t_data['team_2_name']} ({t_data['team_2_score']} Wins)")
+            st.caption("Team Roster:")
+            members_2 = t_data['team_2_members'].strip()
+            if members_2:
+                formatted_t2 = "\n".join([f"* {m.strip()}" for m in members_2.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t2)
+            else:
+                st.info("No members assigned yet.")
+
+    else:
+        st.info("No TDMS match is currently active.")
+
+except Exception:
+    st.info("TDMS match table not initialized yet. Please run the SQL setup command in Supabase.")
 
 
 # --- REFRESH STATUS ---
