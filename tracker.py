@@ -193,7 +193,6 @@ else:
 st.subheader("Active training warnings")
 
 try:
-
     data_response = (
         supabase
         .table("clan_members")
@@ -205,20 +204,13 @@ try:
         .execute()
     )
 
-
     members_data = data_response.data
 
-
     if members_data:
-
-        formatted_list = []
-
-        for rank, member in enumerate(
-            members_data,
-            start=1
-        ):
-
-            formatted_list.append(
+        # --- WARNINGS TABLE ---
+        warnings_list = []
+        for rank, member in enumerate(members_data, start=1):
+            warnings_list.append(
                 {
                     "Rank": rank,
                     "Roblox Username": member["username"],
@@ -226,47 +218,43 @@ try:
                 }
             )
 
-        # Show the Warnings Table
         st.dataframe(
-            formatted_list,
+            warnings_list,
             width=600,
             hide_index=True
         )
         
         st.divider()
         
-        # --- KOTH LEADERBOARD ---
-        st.subheader("👑 King of the Hill (Top Killers)")
+        # --- KOTH LEADERBOARD TABLE ---
+        st.subheader("👑 King of the Hill")
         
-        # Sort the already fetched data by kills (highest to lowest)
+        # Sort the exact same data by kills instead (highest to lowest)
         sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
         
-        # Get the top 5 players
-        top_killers = sorted_by_kills[:5]
-        
-        # Display the KOTH rankings
-        for index, player in enumerate(top_killers):
-            player_kills = player.get('kills', 0)
-            if index == 0:
-                st.markdown(f"### 🥇 {player['username']} - {player_kills} kills")
-            elif index == 1:
-                st.markdown(f"#### 🥈 {player['username']} - {player_kills} kills")
-            elif index == 2:
-                st.markdown(f"#### 🥉 {player['username']} - {player_kills} kills")
-            else:
-                st.markdown(f"**{index + 1}th Place:** {player['username']} - {player_kills} kills")
+        koth_list = []
+        for rank, player in enumerate(sorted_by_kills, start=1):
+            koth_list.append(
+                {
+                    "Rank": rank,
+                    "Roblox Username": player["username"],
+                    "Total Kills": player.get("kills", 0)
+                }
+            )
+
+        # Show the KOTH Table using the exact same formatting
+        st.dataframe(
+            koth_list,
+            width=600,
+            hide_index=True
+        )
 
         st.session_state.last_refresh = datetime.now(timezone.utc)
 
     else:
-
-        st.info(
-            "No members registered in the database yet."
-        )
-
+        st.info("No members registered in the database yet.")
 
 except Exception:
-
     st.code(traceback.format_exc())
 
 
