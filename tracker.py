@@ -51,41 +51,21 @@ if password_input == TRAINER_PASSWORD:
 
     # Reset all member stats button
     if st.sidebar.button("Reset All Member Stats"):
-
         supabase.table("clan_members").update(
-            {
-                "xp": 0,
-                "kills": 0,
-                "warnings": 0
-            }
-        ).neq(
-            "username",
-            ""
-        ).execute()
+            {"xp": 0, "kills": 0, "warnings": 0}
+        ).neq("username", "").execute()
 
         st.sidebar.success("All member stats have been reset!")
         st.rerun()
 
-
     # Fetch members list for dropdown menus
     try:
-        response = (
-            supabase
-            .table("clan_members")
-            .select("username")
-            .execute()
-        )
-
-        existing_users = [
-            row["username"]
-            for row in response.data
-        ]
-
+        response = supabase.table("clan_members").select("username").execute()
+        existing_users = [row["username"] for row in response.data]
     except Exception:
         existing_users = []
 
-
-    # Radio options including Glads Match management
+    # Trainer Options
     action = st.sidebar.radio(
         "Choose Action",
         [
@@ -96,64 +76,26 @@ if password_input == TRAINER_PASSWORD:
         ]
     )
 
-
     # ACTION 1: ADD / UPDATE MEMBER
     if action == "Add/Update Member":
-
-        new_user = st.sidebar.text_input(
-            "Roblox Username"
-        ).strip()
-
+        new_user = st.sidebar.text_input("Roblox Username").strip()
         if st.sidebar.button("Register/Reset Member"):
-
             if new_user:
-
                 supabase.table("clan_members").upsert(
-                    {
-                        "username": new_user,
-                        "xp": 0,
-                        "kills": 0,
-                        "warnings": 0
-                    },
+                    {"username": new_user, "xp": 0, "kills": 0, "warnings": 0},
                     on_conflict="username"
                 ).execute()
-
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
-
     # ACTION 2: LOG STATS
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
-
-        selected_user = st.sidebar.selectbox(
-            "Select Member",
-            existing_users,
-            key="selected_user"
-        )
-
-        warnings_to_add = st.sidebar.number_input(
-            "Warnings to Add",
-            min_value=0,
-            step=1
-        )
-        
-        kills_to_add = st.sidebar.number_input(
-            "Kills to Add",
-            min_value=0,
-            step=1
-        )
+        selected_user = st.sidebar.selectbox("Select Member", existing_users, key="selected_user")
+        warnings_to_add = st.sidebar.number_input("Warnings to Add", min_value=0, step=1)
+        kills_to_add = st.sidebar.number_input("Kills to Add", min_value=0, step=1)
 
         if st.sidebar.button("Submit Training Records"):
-
-            current = (
-                supabase
-                .table("clan_members")
-                .select("*")
-                .eq("username", selected_user)
-                .execute()
-                .data[0]
-            )
-
+            current = supabase.table("clan_members").select("*").eq("username", selected_user).execute().data[0]
             supabase.table("clan_members").update(
                 {
                     "warnings": current["warnings"] + warnings_to_add,
@@ -164,29 +106,18 @@ if password_input == TRAINER_PASSWORD:
             st.sidebar.success(f"Updated stats for {selected_user}!")
             st.rerun()
 
-
     # ACTION 3: DELETE MEMBER
     elif action == "Delete Member" and existing_users:
-
-        user_to_delete = st.sidebar.selectbox(
-            "Select Member to Delete",
-            existing_users,
-            key="delete_user"
-        )
-
+        user_to_delete = st.sidebar.selectbox("Select Member to Delete", existing_users, key="delete_user")
         if st.sidebar.button("🚨 Permanently Delete Member"):
-
             supabase.table("clan_members").delete().eq("username", user_to_delete).execute()
             st.sidebar.success(f"Successfully deleted {user_to_delete}!")
             st.rerun()
 
-
     # ACTION 4: MANAGE GLADS MATCH
     elif action == "Manage Glads Match":
-
         st.sidebar.subheader("⚔️ Glads Live Match Settings")
 
-        # Fetch current glads data
         try:
             glads_res = supabase.table("glads_match").select("*").eq("id", 1).execute()
             glads_data = glads_res.data[0] if glads_res.data else {
@@ -199,13 +130,11 @@ if password_input == TRAINER_PASSWORD:
                 "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
             }
 
-        # TEAM 1 CONTROLS
         st.sidebar.markdown("---")
         t1_name = st.sidebar.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"))
         t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)))
         t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100)
 
-        # TEAM 2 CONTROLS
         st.sidebar.markdown("---")
         t2_name = st.sidebar.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"))
         t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)))
@@ -228,9 +157,7 @@ if password_input == TRAINER_PASSWORD:
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
         st.sidebar.info("No members registered in the database yet.")
 
-
 else:
-
     if password_input:
         st.sidebar.error("Incorrect Password")
 
@@ -240,71 +167,64 @@ else:
     )
 
 
-# --- 1. WARNINGS LEADERBOARD ---
+# ==========================================
+# FETCH ALL MEMBER DATA ONCE
+# ==========================================
+members_data = []
+try:
+    data_response = supabase.table("clan_members").select("*").execute()
+    members_data = data_response.data if data_response.data else []
+except Exception as e:
+    st.error(f"Error connecting to database: {e}")
+
+
+# ==========================================
+# 1. WARNINGS LEADERBOARD (TOP)
+# ==========================================
 st.subheader("Active training warnings")
 
-try:
-    data_response = (
-        supabase
-        .table("clan_members")
-        .select("*")
-        .order("warnings", desc=True)
-        .execute()
-    )
-
-    members_data = data_response.data
-
-    if members_data:
-        warnings_list = []
-        for rank, member in enumerate(members_data, start=1):
-            warnings_list.append(
-                {
-                    "Rank": rank,
-                    "Roblox Username": member["username"],
-                    "Active Warnings": member["warnings"]
-                }
-            )
-
-        st.dataframe(
-            warnings_list,
-            width=600,
-            hide_index=True
-        )
-
-        st.divider()
-
-        # --- 2. KING OF THE HILL LEADERBOARD ---
-        st.subheader("👑 King of the Hill")
-
-        sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
-
-        koth_list = []
-        for rank, player in enumerate(sorted_by_kills, start=1):
-            koth_list.append(
-                {
-                    "Rank": rank,
-                    "Roblox Username": player["username"],
-                    "Total Kills": player.get("kills", 0)
-                }
-            )
-
-        st.dataframe(
-            koth_list,
-            width=600,
-            hide_index=True
-        )
-
-        st.session_state.last_refresh = datetime.now(timezone.utc)
-
-    else:
-        st.info("No members registered in the database yet.")
-
-except Exception:
-    st.code(traceback.format_exc())
+if members_data:
+    sorted_by_warnings = sorted(members_data, key=lambda x: x.get('warnings', 0), reverse=True)
+    warnings_list = [
+        {
+            "Rank": rank,
+            "Roblox Username": member["username"],
+            "Active Warnings": member["warnings"]
+        }
+        for rank, member in enumerate(sorted_by_warnings, start=1)
+    ]
+    st.dataframe(warnings_list, width=600, hide_index=True)
+else:
+    st.info("No members registered in the database yet.")
 
 st.divider()
 
-# --- 3. PUBLIC GLADS SCOREBOARD ---
+
+# ==========================================
+# 2. KING OF THE HILL LEADERBOARD (MIDDLE)
+# ==========================================
+st.subheader("👑 King of the Hill")
+
+if members_data:
+    sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
+    koth_list = [
+        {
+            "Rank": rank,
+            "Roblox Username": player["username"],
+            "Total Kills": player.get("kills", 0)
+        }
+        for rank, player in enumerate(sorted_by_kills, start=1)
+    ]
+    st.dataframe(koth_list, width=600, hide_index=True)
+else:
+    st.info("No member kill stats recorded yet.")
+
+st.divider()
+
+
+# ==========================================
+# 3. GLADS MATCH LIVE SCOREBOARD (BOTTOM)
+# ==========================================
 st.subheader("⚔️ Glads Match Live Scoreboard")
 
 try:
@@ -343,8 +263,9 @@ try:
         st.info("No Glads match is currently active.")
 
 except Exception:
-    st.info("Glads match table not initialized yet.")
+    st.info("Glads match table not initialized yet. Please run the SQL setup command in Supabase.")
 
 
 # --- REFRESH STATUS ---
+st.session_state.last_refresh = datetime.now(timezone.utc)
 st.caption("Auto-refresh: every 10 seconds")
