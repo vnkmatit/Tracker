@@ -240,57 +240,10 @@ else:
     )
 
 
-# --- PUBLIC GLADS SCOREBOARD ---
-st.subheader("⚔️ Glads Match Live Scoreboard")
-
-try:
-    glads_response = supabase.table("glads_match").select("*").eq("id", 1).execute()
-    if glads_response.data:
-        g_data = glads_response.data[0]
-        
-        # Display large score banner
-        score_str = f"{g_data['team_1_score']}  —  {g_data['team_2_score']}"
-        st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{score_str}</h1>", unsafe_allow_html=True)
-        
-        # Two side-by-side columns for Team rosters
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown(f"### 🛡️ {g_data['team_1_name']} ({g_data['team_1_score']} Wins)")
-            st.caption("Team Roster:")
-            members_1 = g_data['team_1_members'].strip()
-            if members_1:
-                # Format as bullet list
-                formatted_t1 = "\n".join([f"* {m.strip()}" for m in members_1.replace(",", "\n").split("\n") if m.strip()])
-                st.markdown(formatted_t1)
-            else:
-                st.info("No members assigned yet.")
-
-        with col2:
-            st.markdown(f"### ⚔️ {g_data['team_2_name']} ({g_data['team_2_score']} Wins)")
-            st.caption("Team Roster:")
-            members_2 = g_data['team_2_members'].strip()
-            if members_2:
-                # Format as bullet list
-                formatted_t2 = "\n".join([f"* {m.strip()}" for m in members_2.replace(",", "\n").split("\n") if m.strip()])
-                st.markdown(formatted_t2)
-            else:
-                st.info("No members assigned yet.")
-
-    else:
-        st.info("No Glads match is currently active.")
-
-except Exception as e:
-    st.info("Glads match table not initialized yet. Run the SQL snippet to set up live tracking.")
-
-st.divider()
-
-
-# --- PUBLIC LEADERBOARDS ---
+# --- 1. WARNINGS LEADERBOARD ---
 st.subheader("Active training warnings")
 
 try:
-
     data_response = (
         supabase
         .table("clan_members")
@@ -302,8 +255,6 @@ try:
     members_data = data_response.data
 
     if members_data:
-
-        # 1. WARNINGS TABLE
         warnings_list = []
         for rank, member in enumerate(members_data, start=1):
             warnings_list.append(
@@ -322,7 +273,7 @@ try:
 
         st.divider()
 
-        # 2. KING OF THE HILL TABLE
+        # --- 2. KING OF THE HILL LEADERBOARD ---
         st.subheader("👑 King of the Hill")
 
         sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
@@ -346,13 +297,53 @@ try:
         st.session_state.last_refresh = datetime.now(timezone.utc)
 
     else:
-
         st.info("No members registered in the database yet.")
 
+except Exception:
+    st.code(traceback.format_exc())
+
+st.divider()
+
+# --- 3. PUBLIC GLADS SCOREBOARD ---
+st.subheader("⚔️ Glads Match Live Scoreboard")
+
+try:
+    glads_response = supabase.table("glads_match").select("*").eq("id", 1).execute()
+    if glads_response.data:
+        g_data = glads_response.data[0]
+        
+        # Display large score banner
+        score_str = f"{g_data['team_1_score']}  —  {g_data['team_2_score']}"
+        st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{score_str}</h1>", unsafe_allow_html=True)
+        
+        # Two side-by-side columns for Team rosters
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown(f"### 🛡️ {g_data['team_1_name']} ({g_data['team_1_score']} Wins)")
+            st.caption("Team Roster:")
+            members_1 = g_data['team_1_members'].strip()
+            if members_1:
+                formatted_t1 = "\n".join([f"* {m.strip()}" for m in members_1.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t1)
+            else:
+                st.info("No members assigned yet.")
+
+        with col2:
+            st.markdown(f"### ⚔️ {g_data['team_2_name']} ({g_data['team_2_score']} Wins)")
+            st.caption("Team Roster:")
+            members_2 = g_data['team_2_members'].strip()
+            if members_2:
+                formatted_t2 = "\n".join([f"* {m.strip()}" for m in members_2.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t2)
+            else:
+                st.info("No members assigned yet.")
+
+    else:
+        st.info("No Glads match is currently active.")
 
 except Exception:
-
-    st.code(traceback.format_exc())
+    st.info("Glads match table not initialized yet.")
 
 
 # --- REFRESH STATUS ---
