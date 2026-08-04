@@ -279,7 +279,7 @@ try:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown(f"### 🛡️ {g_data['team_1_name']} ({g_data['team_1_score']} Wins)")
+            st.markdown(f"### 🛡️ {g_data['team_1_name']}")
             st.caption("Team Roster:")
             members_1 = g_data['team_1_members'].strip()
             if members_1:
@@ -289,7 +289,7 @@ try:
                 st.info("No members assigned yet.")
 
         with col2:
-            st.markdown(f"### ⚔️ {g_data['team_2_name']} ({g_data['team_2_score']} Wins)")
+            st.markdown(f"### ⚔️ {g_data['team_2_name']}")
             st.caption("Team Roster:")
             members_2 = g_data['team_2_members'].strip()
             if members_2:
@@ -323,7 +323,7 @@ try:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown(f"### 🛡️ {t_data['team_1_name']} ({t_data['team_1_score']} Wins)")
+            st.markdown(f"### 🛡️ {t_data['team_1_name']}")
             st.caption("Team Roster:")
             members_1 = t_data['team_1_members'].strip()
             if members_1:
@@ -333,7 +333,7 @@ try:
                 st.info("No members assigned yet.")
 
         with col2:
-            st.markdown(f"### ⚔️ {t_data['team_2_name']} ({t_data['team_2_score']} Wins)")
+            st.markdown(f"### ⚔️ {t_data['team_2_name']}")
             st.caption("Team Roster:")
             members_2 = t_data['team_2_members'].strip()
             if members_2:
