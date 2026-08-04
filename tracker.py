@@ -185,7 +185,7 @@ if password_input == TRAINER_PASSWORD:
             key="delete_user"
         )
 
-        if st.sidebar.button("🚨 Permanently Delete Member"):
+        if st.sidebar.button("🚨 Permanently Delete Member 🚨"):
 
             supabase.table("clan_members").delete().eq(
                 "username",
