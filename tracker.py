@@ -254,7 +254,7 @@ try:
         st.divider()
 
         # 2. KING OF THE HILL TABLE
-        st.subheader("👑 King of the Hill")
+        st.subheader("King of the Hill")
 
         sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
 
