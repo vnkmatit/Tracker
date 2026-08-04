@@ -32,7 +32,7 @@ except Exception as e:
 st.title("The Suilerua Bloodline dashboard")
 st.markdown(
     "Welcome to the official clan tracking database. "
-    "Track your training warnings and combat kills."
+    "Track your training warnings, combat kills, and active Glads matches."
 )
 
 
@@ -49,8 +49,8 @@ if password_input == TRAINER_PASSWORD:
     st.sidebar.success("Trainer Access Granted")
     st.sidebar.subheader("Update Member Stats")
 
-    # Reset all stats button
-    if st.sidebar.button("Reset All Training Stats"):
+    # Reset all member stats button
+    if st.sidebar.button("Reset All Member Stats"):
 
         supabase.table("clan_members").update(
             {
@@ -67,7 +67,7 @@ if password_input == TRAINER_PASSWORD:
         st.rerun()
 
 
-    # Get members list for dropdown menus
+    # Fetch members list for dropdown menus
     try:
         response = (
             supabase
@@ -85,13 +85,14 @@ if password_input == TRAINER_PASSWORD:
         existing_users = []
 
 
-    # Radio options including the new Delete Member action
+    # Radio options including Glads Match management
     action = st.sidebar.radio(
         "Choose Action",
         [
             "Add/Update Member",
             "Log Stats (Warnings & Kills)",
-            "Delete Member"
+            "Delete Member",
+            "Manage Glads Match"
         ]
     )
 
@@ -117,10 +118,7 @@ if password_input == TRAINER_PASSWORD:
                     on_conflict="username"
                 ).execute()
 
-                st.sidebar.success(
-                    f"Registered {new_user}!"
-                )
-
+                st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
 
@@ -151,10 +149,7 @@ if password_input == TRAINER_PASSWORD:
                 supabase
                 .table("clan_members")
                 .select("*")
-                .eq(
-                    "username",
-                    selected_user
-                )
+                .eq("username", selected_user)
                 .execute()
                 .data[0]
             )
@@ -164,15 +159,9 @@ if password_input == TRAINER_PASSWORD:
                     "warnings": current["warnings"] + warnings_to_add,
                     "kills": current.get("kills", 0) + kills_to_add
                 }
-            ).eq(
-                "username",
-                selected_user
-            ).execute()
+            ).eq("username", selected_user).execute()
 
-            st.sidebar.success(
-                f"Updated stats for {selected_user}!"
-            )
-
+            st.sidebar.success(f"Updated stats for {selected_user}!")
             st.rerun()
 
 
@@ -185,17 +174,55 @@ if password_input == TRAINER_PASSWORD:
             key="delete_user"
         )
 
-        if st.sidebar.button("🚨 Permanently Delete Member 🚨"):
+        if st.sidebar.button("🚨 Permanently Delete Member"):
 
-            supabase.table("clan_members").delete().eq(
-                "username",
-                user_to_delete
-            ).execute()
+            supabase.table("clan_members").delete().eq("username", user_to_delete).execute()
+            st.sidebar.success(f"Successfully deleted {user_to_delete}!")
+            st.rerun()
 
-            st.sidebar.success(
-                f"Successfully deleted {user_to_delete}!"
-            )
 
+    # ACTION 4: MANAGE GLADS MATCH
+    elif action == "Manage Glads Match":
+
+        st.sidebar.subheader("⚔️ Glads Live Match Settings")
+
+        # Fetch current glads data
+        try:
+            glads_res = supabase.table("glads_match").select("*").eq("id", 1).execute()
+            glads_data = glads_res.data[0] if glads_res.data else {
+                "team_1_name": "Team 1", "team_1_score": 0, "team_1_members": "",
+                "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
+            }
+        except Exception:
+            glads_data = {
+                "team_1_name": "Team 1", "team_1_score": 0, "team_1_members": "",
+                "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
+            }
+
+        # TEAM 1 CONTROLS
+        st.sidebar.markdown("---")
+        t1_name = st.sidebar.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"))
+        t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)))
+        t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100)
+
+        # TEAM 2 CONTROLS
+        st.sidebar.markdown("---")
+        t2_name = st.sidebar.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"))
+        t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)))
+        t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=glads_data.get("team_2_members", ""), height=100)
+
+        if st.sidebar.button("💾 Update Glads Match"):
+            supabase.table("glads_match").upsert({
+                "id": 1,
+                "team_1_name": t1_name,
+                "team_1_score": t1_score,
+                "team_1_members": t1_members,
+                "team_2_name": t2_name,
+                "team_2_score": t2_score,
+                "team_2_members": t2_members
+            }).execute()
+
+            st.sidebar.success("Glads match score & rosters updated!")
             st.rerun()
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
@@ -209,9 +236,54 @@ else:
 
     st.sidebar.info(
         "Regular members can view the leaderboards. "
-        "Trainers must log in to manage members."
+        "Trainers must log in to manage members and live scores."
     )
 
+
+# --- PUBLIC GLADS SCOREBOARD ---
+st.subheader("⚔️ Glads Match Live Scoreboard")
+
+try:
+    glads_response = supabase.table("glads_match").select("*").eq("id", 1).execute()
+    if glads_response.data:
+        g_data = glads_response.data[0]
+        
+        # Display large score banner
+        score_str = f"{g_data['team_1_score']}  —  {g_data['team_2_score']}"
+        st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{score_str}</h1>", unsafe_allow_html=True)
+        
+        # Two side-by-side columns for Team rosters
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown(f"### 🛡️ {g_data['team_1_name']} ({g_data['team_1_score']} Wins)")
+            st.caption("Team Roster:")
+            members_1 = g_data['team_1_members'].strip()
+            if members_1:
+                # Format as bullet list
+                formatted_t1 = "\n".join([f"* {m.strip()}" for m in members_1.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t1)
+            else:
+                st.info("No members assigned yet.")
+
+        with col2:
+            st.markdown(f"### ⚔️ {g_data['team_2_name']} ({g_data['team_2_score']} Wins)")
+            st.caption("Team Roster:")
+            members_2 = g_data['team_2_members'].strip()
+            if members_2:
+                # Format as bullet list
+                formatted_t2 = "\n".join([f"* {m.strip()}" for m in members_2.replace(",", "\n").split("\n") if m.strip()])
+                st.markdown(formatted_t2)
+            else:
+                st.info("No members assigned yet.")
+
+    else:
+        st.info("No Glads match is currently active.")
+
+except Exception as e:
+    st.info("Glads match table not initialized yet. Run the SQL snippet to set up live tracking.")
+
+st.divider()
 
 
 # --- PUBLIC LEADERBOARDS ---
@@ -223,10 +295,7 @@ try:
         supabase
         .table("clan_members")
         .select("*")
-        .order(
-            "warnings",
-            desc=True
-        )
+        .order("warnings", desc=True)
         .execute()
     )
 
@@ -254,7 +323,7 @@ try:
         st.divider()
 
         # 2. KING OF THE HILL TABLE
-        st.subheader("King of the Hill")
+        st.subheader("👑 King of the Hill")
 
         sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
 
@@ -278,9 +347,7 @@ try:
 
     else:
 
-        st.info(
-            "No members registered in the database yet."
-        )
+        st.info("No members registered in the database yet.")
 
 
 except Exception:
@@ -288,8 +355,5 @@ except Exception:
     st.code(traceback.format_exc())
 
 
-
 # --- REFRESH STATUS ---
-st.caption(
-    "Auto-refresh: every 10 seconds"
-)
+st.caption("Auto-refresh: every 10 seconds")
