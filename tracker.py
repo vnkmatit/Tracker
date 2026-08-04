@@ -32,7 +32,7 @@ except Exception as e:
 st.title("The Suilerua Bloodline dashboard")
 st.markdown(
     "Welcome to the official clan tracking database. "
-    "Track your training warnings."
+    "Track your training warnings and combat kills."
 )
 
 
@@ -89,7 +89,7 @@ if password_input == TRAINER_PASSWORD:
         "Choose Action",
         [
             "Add/Update Member",
-            "Log Training Warnings"
+            "Log Stats (Warnings & Kills)"
         ]
     )
 
@@ -123,7 +123,7 @@ if password_input == TRAINER_PASSWORD:
 
 
 
-    elif action == "Log Training Warnings" and existing_users:
+    elif action == "Log Stats (Warnings & Kills)" and existing_users:
 
         selected_user = st.sidebar.selectbox(
             "Select Member",
@@ -131,15 +131,20 @@ if password_input == TRAINER_PASSWORD:
             key="selected_user"
         )
 
-
         warnings_to_add = st.sidebar.number_input(
             "Warnings to Add",
             min_value=0,
             step=1
         )
+        
+        kills_to_add = st.sidebar.number_input(
+            "Kills to Add",
+            min_value=0,
+            step=1
+        )
 
 
-        if st.sidebar.button("Submit Warning Records"):
+        if st.sidebar.button("Submit Training Records"):
 
             current = (
                 supabase
@@ -156,7 +161,8 @@ if password_input == TRAINER_PASSWORD:
 
             supabase.table("clan_members").update(
                 {
-                    "warnings": current["warnings"] + warnings_to_add
+                    "warnings": current["warnings"] + warnings_to_add,
+                    "kills": current.get("kills", 0) + kills_to_add
                 }
             ).eq(
                 "username",
@@ -165,7 +171,7 @@ if password_input == TRAINER_PASSWORD:
 
 
             st.sidebar.success(
-                f"Updated warnings for {selected_user}!"
+                f"Updated stats for {selected_user}!"
             )
 
             st.rerun()
@@ -178,14 +184,13 @@ else:
 
     st.sidebar.info(
         "Regular members can view the leaderboard. "
-        "Trainers must log in to record warnings."
+        "Trainers must log in to record warnings and kills."
     )
 
 
 
 # --- PUBLIC LEADERBOARD ---
 st.subheader("Active training warnings")
-
 
 try:
 
@@ -208,7 +213,6 @@ try:
 
         formatted_list = []
 
-
         for rank, member in enumerate(
             members_data,
             start=1
@@ -222,16 +226,37 @@ try:
                 }
             )
 
-
+        # Show the Warnings Table
         st.dataframe(
             formatted_list,
             width=600,
             hide_index=True
         )
-
+        
+        st.divider()
+        
+        # --- KOTH LEADERBOARD ---
+        st.subheader("👑 King of the Hill (Top Killers)")
+        
+        # Sort the already fetched data by kills (highest to lowest)
+        sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
+        
+        # Get the top 5 players
+        top_killers = sorted_by_kills[:5]
+        
+        # Display the KOTH rankings
+        for index, player in enumerate(top_killers):
+            player_kills = player.get('kills', 0)
+            if index == 0:
+                st.markdown(f"### 🥇 {player['username']} - {player_kills} kills")
+            elif index == 1:
+                st.markdown(f"#### 🥈 {player['username']} - {player_kills} kills")
+            elif index == 2:
+                st.markdown(f"#### 🥉 {player['username']} - {player_kills} kills")
+            else:
+                st.markdown(f"**{index + 1}th Place:** {player['username']} - {player_kills} kills")
 
         st.session_state.last_refresh = datetime.now(timezone.utc)
-
 
     else:
 
@@ -254,8 +279,6 @@ seconds_ago = int(
         st.session_state.last_refresh
     ).total_seconds()
 )
-
-
 
 st.caption(
     "Auto-refresh: every 10 seconds"
