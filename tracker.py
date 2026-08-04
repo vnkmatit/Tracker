@@ -49,7 +49,7 @@ if password_input == TRAINER_PASSWORD:
     st.sidebar.success("Trainer Access Granted")
     st.sidebar.subheader("Update Member Stats")
 
-    # Reset all stats
+    # Reset all stats button
     if st.sidebar.button("Reset All Training Stats"):
 
         supabase.table("clan_members").update(
@@ -67,7 +67,7 @@ if password_input == TRAINER_PASSWORD:
         st.rerun()
 
 
-    # Get members
+    # Get members list for dropdown menus
     try:
         response = (
             supabase
@@ -85,21 +85,23 @@ if password_input == TRAINER_PASSWORD:
         existing_users = []
 
 
+    # Radio options including the new Delete Member action
     action = st.sidebar.radio(
         "Choose Action",
         [
             "Add/Update Member",
-            "Log Stats (Warnings & Kills)"
+            "Log Stats (Warnings & Kills)",
+            "Delete Member"
         ]
     )
 
 
+    # ACTION 1: ADD / UPDATE MEMBER
     if action == "Add/Update Member":
 
         new_user = st.sidebar.text_input(
             "Roblox Username"
         ).strip()
-
 
         if st.sidebar.button("Register/Reset Member"):
 
@@ -122,7 +124,7 @@ if password_input == TRAINER_PASSWORD:
                 st.rerun()
 
 
-
+    # ACTION 2: LOG STATS
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
 
         selected_user = st.sidebar.selectbox(
@@ -143,7 +145,6 @@ if password_input == TRAINER_PASSWORD:
             step=1
         )
 
-
         if st.sidebar.button("Submit Training Records"):
 
             current = (
@@ -158,7 +159,6 @@ if password_input == TRAINER_PASSWORD:
                 .data[0]
             )
 
-
             supabase.table("clan_members").update(
                 {
                     "warnings": current["warnings"] + warnings_to_add,
@@ -169,12 +169,37 @@ if password_input == TRAINER_PASSWORD:
                 selected_user
             ).execute()
 
-
             st.sidebar.success(
                 f"Updated stats for {selected_user}!"
             )
 
             st.rerun()
+
+
+    # ACTION 3: DELETE MEMBER
+    elif action == "Delete Member" and existing_users:
+
+        user_to_delete = st.sidebar.selectbox(
+            "Select Member to Delete",
+            existing_users,
+            key="delete_user"
+        )
+
+        if st.sidebar.button("🚨 Permanently Delete Member"):
+
+            supabase.table("clan_members").delete().eq(
+                "username",
+                user_to_delete
+            ).execute()
+
+            st.sidebar.success(
+                f"Successfully deleted {user_to_delete}!"
+            )
+
+            st.rerun()
+
+    elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
+        st.sidebar.info("No members registered in the database yet.")
 
 
 else:
@@ -183,16 +208,17 @@ else:
         st.sidebar.error("Incorrect Password")
 
     st.sidebar.info(
-        "Regular members can view the leaderboard. "
-        "Trainers must log in to record warnings and kills."
+        "Regular members can view the leaderboards. "
+        "Trainers must log in to manage members."
     )
 
 
 
-# --- PUBLIC LEADERBOARD ---
+# --- PUBLIC LEADERBOARDS ---
 st.subheader("Active training warnings")
 
 try:
+
     data_response = (
         supabase
         .table("clan_members")
@@ -207,7 +233,8 @@ try:
     members_data = data_response.data
 
     if members_data:
-        # --- WARNINGS TABLE ---
+
+        # 1. WARNINGS TABLE
         warnings_list = []
         for rank, member in enumerate(members_data, start=1):
             warnings_list.append(
@@ -223,15 +250,14 @@ try:
             width=600,
             hide_index=True
         )
-        
+
         st.divider()
-        
-        # --- KOTH LEADERBOARD TABLE ---
+
+        # 2. KING OF THE HILL TABLE
         st.subheader("👑 King of the Hill")
-        
-        # Sort the exact same data by kills instead (highest to lowest)
+
         sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
-        
+
         koth_list = []
         for rank, player in enumerate(sorted_by_kills, start=1):
             koth_list.append(
@@ -242,7 +268,6 @@ try:
                 }
             )
 
-        # Show the KOTH Table using the exact same formatting
         st.dataframe(
             koth_list,
             width=600,
@@ -252,22 +277,19 @@ try:
         st.session_state.last_refresh = datetime.now(timezone.utc)
 
     else:
-        st.info("No members registered in the database yet.")
+
+        st.info(
+            "No members registered in the database yet."
+        )
+
 
 except Exception:
+
     st.code(traceback.format_exc())
 
 
 
 # --- REFRESH STATUS ---
-seconds_ago = int(
-    (
-        datetime.now(timezone.utc)
-        -
-        st.session_state.last_refresh
-    ).total_seconds()
-)
-
 st.caption(
     "Auto-refresh: every 10 seconds"
 )
