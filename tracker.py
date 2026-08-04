@@ -244,7 +244,7 @@ st.divider()
 # ==========================================
 # 2. KING OF THE HILL LEADERBOARD
 # ==========================================
-st.subheader("👑 King of the Hill")
+st.subheader("👑 KOTH Live Scoreboard")
 
 if members_data:
     sorted_by_kills = sorted(members_data, key=lambda x: x.get('kills', 0), reverse=True)
@@ -266,7 +266,7 @@ st.divider()
 # ==========================================
 # 3. GLADS MATCH LIVE SCOREBOARD
 # ==========================================
-st.subheader("⚔️ Glads Match Live Scoreboard")
+st.subheader("⚔️ Glads Live Scoreboard")
 
 try:
     glads_response = supabase.table("glads_match").select("*").eq("id", 1).execute()
@@ -310,7 +310,7 @@ st.divider()
 # ==========================================
 # 4. TDMS MATCH LIVE SCOREBOARD
 # ==========================================
-st.subheader("🎯 TDMS Match Live Scoreboard")
+st.subheader("🎯 TDM Live Scoreboard")
 
 try:
     tdms_response = supabase.table("tdms_match").select("*").eq("id", 1).execute()
