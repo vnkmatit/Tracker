@@ -3,6 +3,7 @@ import streamlit as st
 from supabase import create_client, Client
 from datetime import datetime, timezone
 from streamlit_autorefresh import st_autorefresh
+from urllib.parse import quote
 import traceback
 
 st.set_page_config(
@@ -65,7 +66,7 @@ if password_input == TRAINER_PASSWORD:
             "Delete Member",
             "Manage Glads Match",
             "Manage TDMS Match",
-            "Sync Discord Members"
+            "Set Active Channel Scan"
         ]
     )
 
@@ -196,59 +197,35 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success("TDMS match score & rosters updated!")
                 st.rerun()
 
-    # ACTION 6: SYNC DISCORD MEMBERS
-    elif action == "Sync Discord Members":
-        st.sidebar.subheader("🔄 Sync Role Members")
-        st.sidebar.caption("Pulls server members who have your specified Role ID into the database.")
+    # ACTION 6: SET ACTIVE CHANNEL SCAN
+    elif action == "Set Active Channel Scan":
+        st.sidebar.subheader("📌 Auto-Scan Channel Settings")
+        st.sidebar.caption("Set the channel ID and emoji. The bot will automatically inspect recent messages to find the latest event.")
 
-        with st.sidebar.form("discord_sync_form"):
-            submit_sync = st.form_submit_button("Pull Clan Members from Discord")
+        try:
+            evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
+            evt_curr = evt_res.data[0] if evt_res.data else {}
+        except Exception:
+            evt_curr = {}
 
-            if submit_sync:
-                BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
-                GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
-                ROLE_ID = st.secrets.get("DISCORD_ROLE_ID")
+        with st.sidebar.form("event_settings_form"):
+            evt_name = st.text_input("Event Title", value=evt_curr.get("event_name", "Clan Practice"))
+            c_id = st.text_input("Discord Channel ID", value=evt_curr.get("channel_id", "")).strip()
+            emoji_val = st.text_input("Target Emoji", value=evt_curr.get("emoji", "✅")).strip()
 
-                if not BOT_TOKEN or not GUILD_ID or not ROLE_ID:
-                    st.sidebar.error("Missing DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, or DISCORD_ROLE_ID in secrets!")
-                else:
-                    headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-                    url = f"https://discord.com/api/v10/guilds/{GUILD_ID}/members?limit=1000"
+            submit_evt = st.form_submit_button("💾 Save Settings")
 
-                    res = requests.get(url, headers=headers)
+            if submit_evt:
+                supabase.table("event_settings").upsert({
+                    "id": 1,
+                    "event_name": evt_name,
+                    "channel_id": c_id,
+                    "message_id": "",  # Dynamic lookup
+                    "emoji": emoji_val
+                }).execute()
 
-                    if res.status_code == 200:
-                        discord_members = res.json()
-                        added_count = 0
-
-                        for m in discord_members:
-                            # Skip bots
-                            if m.get("user", {}).get("bot", False):
-                                continue
-
-                            # Check if user has the specific role ID
-                            user_roles = m.get("roles", [])
-                            if str(ROLE_ID) not in [str(r) for r in user_roles]:
-                                continue
-
-                            username = m.get("nick") or m.get("user", {}).get("global_name") or m.get("user", {}).get("username")
-
-                            if username:
-                                existing = supabase.table("clan_members").select("*").eq("username", username).execute()
-
-                                if not existing.data:
-                                    supabase.table("clan_members").insert({
-                                        "username": username,
-                                        "xp": 0,
-                                        "kills": 0,
-                                        "warnings": 0
-                                    }).execute()
-                                    added_count += 1
-
-                        st.sidebar.success(f"Synced! Added {added_count} role members.")
-                        st.rerun()
-                    else:
-                        st.sidebar.error(f"Failed to fetch members. Error {res.status_code}: {res.text}")
+                st.sidebar.success("Auto-scan settings saved!")
+                st.rerun()
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
         st.sidebar.info("No members registered in the database yet.")
@@ -275,7 +252,68 @@ except Exception as e:
 
 
 # ==========================================
-# 1. WARNINGS LEADERBOARD
+# 1. LIVE EVENT ATTENDANCE BOARD (PUBLIC AUTO-SCAN)
+# ==========================================
+try:
+    evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
+    if evt_res.data and evt_res.data[0].get("channel_id"):
+        evt = evt_res.data[0]
+        channel_id = evt["channel_id"]
+        target_emoji = evt.get("emoji", "✅")
+
+        BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+        GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+
+        if BOT_TOKEN and GUILD_ID:
+            headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+
+            # Step A: Fetch the last 10 messages from the target channel
+            messages_url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
+            msg_res = requests.get(messages_url, headers=headers)
+
+            active_message_id = None
+
+            if msg_res.status_code == 200:
+                recent_messages = msg_res.json()
+                for msg in recent_messages:
+                    reactions = msg.get("reactions", [])
+                    # Find the newest message that has reactions matching target_emoji
+                    if any(r.get("emoji", {}).get("name") == target_emoji for r in reactions) or reactions:
+                        active_message_id = msg["id"]
+                        break
+
+            # Step B: Fetch reaction users from the auto-detected message
+            if active_message_id:
+                st.subheader(f"📋 Live Event Sign-ups: {evt['event_name']}")
+                encoded_emoji = quote(target_emoji)
+                reactions_url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{active_message_id}/reactions/{encoded_emoji}?limit=100"
+
+                react_res = requests.get(reactions_url, headers=headers)
+                if react_res.status_code == 200:
+                    users = react_res.json()
+                    attendees = []
+                    for idx, u in enumerate(users, start=1):
+                        if u.get("bot"):
+                            continue
+                        name = u.get("global_name") or u.get("username")
+                        attendees.append({"#": idx, "Attending Member": name})
+
+                    if attendees:
+                        st.dataframe(attendees, width=500, height=300, hide_index=True)
+                    else:
+                        st.info("No reactions recorded yet for the latest message.")
+                else:
+                    st.warning("Failed to retrieve user reactions for the current message.")
+            else:
+                st.info(f"No recent messages with reaction '{target_emoji}' found in the channel.")
+
+        st.divider()
+except Exception:
+    pass
+
+
+# ==========================================
+# 2. WARNINGS LEADERBOARD
 # ==========================================
 st.subheader("Active training warnings")
 
@@ -289,7 +327,6 @@ if members_data:
         }
         for rank, member in enumerate(sorted_by_warnings, start=1)
     ]
-    # Restrict height to 400px so it stays scrollable and tidy
     st.dataframe(warnings_list, width=600, height=400, hide_index=True)
 else:
     st.info("No members registered in the database yet.")
@@ -298,7 +335,7 @@ st.divider()
 
 
 # ==========================================
-# 2. KING OF THE HILL LEADERBOARD
+# 3. KING OF THE HILL LEADERBOARD
 # ==========================================
 st.subheader("👑 KOTH Live Scoreboard")
 
@@ -312,7 +349,6 @@ if members_data:
         }
         for rank, player in enumerate(sorted_by_kills, start=1)
     ]
-    # Restrict height to 400px so it stays scrollable and tidy
     st.dataframe(koth_list, width=600, height=400, hide_index=True)
 else:
     st.info("No member kill stats recorded yet.")
@@ -321,7 +357,7 @@ st.divider()
 
 
 # ==========================================
-# 3. GLADS MATCH LIVE SCOREBOARD
+# 4. GLADS MATCH LIVE SCOREBOARD
 # ==========================================
 st.subheader("⚔️ Glads Live Scoreboard")
 
@@ -365,7 +401,7 @@ st.divider()
 
 
 # ==========================================
-# 4. TDMS MATCH LIVE SCOREBOARD
+# 5. TDMS MATCH LIVE SCOREBOARD
 # ==========================================
 st.subheader("🎯 TDM Live Scoreboard")
 
