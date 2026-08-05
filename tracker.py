@@ -74,7 +74,8 @@ if password_input == TRAINER_PASSWORD:
             "Log Stats (Warnings & Kills)",
             "Delete Member",
             "Manage Glads Match",
-            "Manage TDMS Match"
+            "Manage TDMS Match",
+            "Sync Discord Members"
         ]
     )
 
