@@ -48,16 +48,6 @@ password_input = st.sidebar.text_input(
 if password_input == TRAINER_PASSWORD:
 
     st.sidebar.success("Trainer Access Granted")
-    st.sidebar.subheader("Update Member Stats")
-
-    # Reset all member stats button
-    if st.sidebar.button("Reset All Member Stats"):
-        supabase.table("clan_members").update(
-            {"xp": 0, "kills": 0, "warnings": 0}
-        ).neq("username", "").execute()
-
-        st.sidebar.success("All member stats have been reset!")
-        st.rerun()
 
     # Fetch members list for dropdown menus
     try:
@@ -81,9 +71,10 @@ if password_input == TRAINER_PASSWORD:
 
     # ACTION 1: ADD / UPDATE MEMBER
     if action == "Add/Update Member":
-        new_user = st.sidebar.text_input("Roblox Username").strip()
-        if st.sidebar.button("Register/Reset Member"):
-            if new_user:
+        with st.sidebar.form("add_member_form"):
+            new_user = st.text_input("Roblox Username").strip()
+            submit_member = st.form_submit_button("Register/Reset Member")
+            if submit_member and new_user:
                 supabase.table("clan_members").upsert(
                     {"username": new_user, "xp": 0, "kills": 0, "warnings": 0},
                     on_conflict="username"
@@ -93,29 +84,33 @@ if password_input == TRAINER_PASSWORD:
 
     # ACTION 2: LOG STATS
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
-        selected_user = st.sidebar.selectbox("Select Member", existing_users, key="selected_user")
-        warnings_to_add = st.sidebar.number_input("Warnings to Add", min_value=0, step=1)
-        kills_to_add = st.sidebar.number_input("Kills to Add", min_value=0, step=1)
+        with st.sidebar.form("log_stats_form"):
+            selected_user = st.selectbox("Select Member", existing_users, key="selected_user")
+            warnings_to_add = st.number_input("Warnings to Add", min_value=0, step=1)
+            kills_to_add = st.number_input("Kills to Add", min_value=0, step=1)
+            submit_stats = st.form_submit_button("Submit Training Records")
 
-        if st.sidebar.button("Submit Training Records"):
-            current = supabase.table("clan_members").select("*").eq("username", selected_user).execute().data[0]
-            supabase.table("clan_members").update(
-                {
-                    "warnings": current["warnings"] + warnings_to_add,
-                    "kills": current.get("kills", 0) + kills_to_add
-                }
-            ).eq("username", selected_user).execute()
+            if submit_stats:
+                current = supabase.table("clan_members").select("*").eq("username", selected_user).execute().data[0]
+                supabase.table("clan_members").update(
+                    {
+                        "warnings": current["warnings"] + warnings_to_add,
+                        "kills": current.get("kills", 0) + kills_to_add
+                    }
+                ).eq("username", selected_user).execute()
 
-            st.sidebar.success(f"Updated stats for {selected_user}!")
-            st.rerun()
+                st.sidebar.success(f"Updated stats for {selected_user}!")
+                st.rerun()
 
     # ACTION 3: DELETE MEMBER
     elif action == "Delete Member" and existing_users:
-        user_to_delete = st.sidebar.selectbox("Select Member to Delete", existing_users, key="delete_user")
-        if st.sidebar.button("🚨 Permanently Delete Member"):
-            supabase.table("clan_members").delete().eq("username", user_to_delete).execute()
-            st.sidebar.success(f"Successfully deleted {user_to_delete}!")
-            st.rerun()
+        with st.sidebar.form("delete_member_form"):
+            user_to_delete = st.selectbox("Select Member to Delete", existing_users, key="delete_user")
+            submit_delete = st.form_submit_button("🚨 Permanently Delete Member")
+            if submit_delete:
+                supabase.table("clan_members").delete().eq("username", user_to_delete).execute()
+                st.sidebar.success(f"Successfully deleted {user_to_delete}!")
+                st.rerun()
 
     # ACTION 4: MANAGE GLADS MATCH
     elif action == "Manage Glads Match":
@@ -133,29 +128,31 @@ if password_input == TRAINER_PASSWORD:
                 "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
             }
 
-        st.sidebar.markdown("---")
-        t1_name = st.sidebar.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"), key="g_t1_name")
-        t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)), key="g_t1_score")
-        t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100, key="g_t1_members")
+        with st.sidebar.form("glads_form"):
+            t1_name = st.text_input("Team 1 Name", value=glads_data.get("team_1_name", "Team Alpha"), key="g_t1_name")
+            t1_score = st.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_1_score", 0)), key="g_t1_score")
+            t1_members = st.text_area("Team 1 Members (comma or line separated)", value=glads_data.get("team_1_members", ""), height=100, key="g_t1_members")
 
-        st.sidebar.markdown("---")
-        t2_name = st.sidebar.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"), key="g_t2_name")
-        t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)), key="g_t2_score")
-        t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=glads_data.get("team_2_members", ""), height=100, key="g_t2_members")
+            st.markdown("---")
+            t2_name = st.text_input("Team 2 Name", value=glads_data.get("team_2_name", "Team Bravo"), key="g_t2_name")
+            t2_score = st.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(glads_data.get("team_2_score", 0)), key="g_t2_score")
+            t2_members = st.text_area("Team 2 Members (comma or line separated)", value=glads_data.get("team_2_members", ""), height=100, key="g_t2_members")
 
-        if st.sidebar.button("💾 Update Glads Match"):
-            supabase.table("glads_match").upsert({
-                "id": 1,
-                "team_1_name": t1_name,
-                "team_1_score": t1_score,
-                "team_1_members": t1_members,
-                "team_2_name": t2_name,
-                "team_2_score": t2_score,
-                "team_2_members": t2_members
-            }).execute()
+            submit_glads = st.form_submit_button("💾 Update Glads Match")
 
-            st.sidebar.success("Glads match score & rosters updated!")
-            st.rerun()
+            if submit_glads:
+                supabase.table("glads_match").upsert({
+                    "id": 1,
+                    "team_1_name": t1_name,
+                    "team_1_score": t1_score,
+                    "team_1_members": t1_members,
+                    "team_2_name": t2_name,
+                    "team_2_score": t2_score,
+                    "team_2_members": t2_members
+                }).execute()
+
+                st.sidebar.success("Glads match score & rosters updated!")
+                st.rerun()
 
     # ACTION 5: MANAGE TDMS MATCH
     elif action == "Manage TDMS Match":
@@ -173,29 +170,78 @@ if password_input == TRAINER_PASSWORD:
                 "team_2_name": "Team 2", "team_2_score": 0, "team_2_members": ""
             }
 
-        st.sidebar.markdown("---")
-        tdms_t1_name = st.sidebar.text_input("Team 1 Name", value=tdms_data.get("team_1_name", "Team Alpha"), key="t_t1_name")
-        tdms_t1_score = st.sidebar.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_1_score", 0)), key="t_t1_score")
-        tdms_t1_members = st.sidebar.text_area("Team 1 Members (comma or line separated)", value=tdms_data.get("team_1_members", ""), height=100, key="t_t1_members")
+        with st.sidebar.form("tdms_form"):
+            tdms_t1_name = st.text_input("Team 1 Name", value=tdms_data.get("team_1_name", "Team Alpha"), key="t_t1_name")
+            tdms_t1_score = st.number_input("Team 1 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_1_score", 0)), key="t_t1_score")
+            tdms_t1_members = st.text_area("Team 1 Members (comma or line separated)", value=tdms_data.get("team_1_members", ""), height=100, key="t_t1_members")
 
-        st.sidebar.markdown("---")
-        tdms_t2_name = st.sidebar.text_input("Team 2 Name", value=tdms_data.get("team_2_name", "Team Bravo"), key="t_t2_name")
-        tdms_t2_score = st.sidebar.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_2_score", 0)), key="t_t2_score")
-        tdms_t2_members = st.sidebar.text_area("Team 2 Members (comma or line separated)", value=tdms_data.get("team_2_members", ""), height=100, key="t_t2_members")
+            st.markdown("---")
+            tdms_t2_name = st.text_input("Team 2 Name", value=tdms_data.get("team_2_name", "Team Bravo"), key="t_t2_name")
+            tdms_t2_score = st.number_input("Team 2 Wins/Score", min_value=0, step=1, value=int(tdms_data.get("team_2_score", 0)), key="t_t2_score")
+            tdms_t2_members = st.text_area("Team 2 Members (comma or line separated)", value=tdms_data.get("team_2_members", ""), height=100, key="t_t2_members")
 
-        if st.sidebar.button("💾 Update TDMS Match"):
-            supabase.table("tdms_match").upsert({
-                "id": 1,
-                "team_1_name": tdms_t1_name,
-                "team_1_score": tdms_t1_score,
-                "team_1_members": tdms_t1_members,
-                "team_2_name": tdms_t2_name,
-                "team_2_score": tdms_t2_score,
-                "team_2_members": tdms_t2_members
-            }).execute()
+            submit_tdms = st.form_submit_button("💾 Update TDMS Match")
 
-            st.sidebar.success("TDMS match score & rosters updated!")
-            st.rerun()
+            if submit_tdms:
+                supabase.table("tdms_match").upsert({
+                    "id": 1,
+                    "team_1_name": tdms_t1_name,
+                    "team_1_score": tdms_t1_score,
+                    "team_1_members": tdms_t1_members,
+                    "team_2_name": tdms_t2_name,
+                    "team_2_score": tdms_t2_score,
+                    "team_2_members": tdms_t2_members
+                }).execute()
+
+                st.sidebar.success("TDMS match score & rosters updated!")
+                st.rerun()
+
+    # ACTION 6: SYNC DISCORD MEMBERS
+    elif action == "Sync Discord Members":
+        st.sidebar.subheader("🔄 Sync Server Members")
+        st.sidebar.caption("Pulls real members from Discord into the database without touching existing stats.")
+
+        with st.sidebar.form("discord_sync_form"):
+            submit_sync = st.form_submit_button("Pull Members from Discord")
+
+            if submit_sync:
+                BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+                GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+
+                if not BOT_TOKEN or not GUILD_ID:
+                    st.sidebar.error("Missing DISCORD_BOT_TOKEN or DISCORD_GUILD_ID in secrets!")
+                else:
+                    headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+                    url = f"https://discord.com/api/v10/guilds/{GUILD_ID}/members?limit=1000"
+
+                    res = requests.get(url, headers=headers)
+
+                    if res.status_code == 200:
+                        discord_members = res.json()
+                        added_count = 0
+
+                        for m in discord_members:
+                            if m.get("user", {}).get("bot", False):
+                                continue
+
+                            username = m.get("nick") or m.get("user", {}).get("global_name") or m.get("user", {}).get("username")
+
+                            if username:
+                                existing = supabase.table("clan_members").select("*").eq("username", username).execute()
+
+                                if not existing.data:
+                                    supabase.table("clan_members").insert({
+                                        "username": username,
+                                        "xp": 0,
+                                        "kills": 0,
+                                        "warnings": 0
+                                    }).execute()
+                                    added_count += 1
+
+                        st.sidebar.success(f"Synced! Added {added_count} new members.")
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"Failed to fetch members. Error {res.status_code}: {res.text}")
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
         st.sidebar.info("No members registered in the database yet.")
