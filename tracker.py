@@ -198,18 +198,19 @@ if password_input == TRAINER_PASSWORD:
 
     # ACTION 6: SYNC DISCORD MEMBERS
     elif action == "Sync Discord Members":
-        st.sidebar.subheader("🔄 Sync Server Members")
-        st.sidebar.caption("Pulls real members from Discord into the database without touching existing stats.")
+        st.sidebar.subheader("🔄 Sync Role Members")
+        st.sidebar.caption("Pulls server members who have your specified Role ID into the database.")
 
         with st.sidebar.form("discord_sync_form"):
-            submit_sync = st.form_submit_button("Pull Members from Discord")
+            submit_sync = st.form_submit_button("Pull Clan Members from Discord")
 
             if submit_sync:
                 BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
                 GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+                ROLE_ID = st.secrets.get("DISCORD_ROLE_ID")
 
-                if not BOT_TOKEN or not GUILD_ID:
-                    st.sidebar.error("Missing DISCORD_BOT_TOKEN or DISCORD_GUILD_ID in secrets!")
+                if not BOT_TOKEN or not GUILD_ID or not ROLE_ID:
+                    st.sidebar.error("Missing DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, or DISCORD_ROLE_ID in secrets!")
                 else:
                     headers = {"Authorization": f"Bot {BOT_TOKEN}"}
                     url = f"https://discord.com/api/v10/guilds/{GUILD_ID}/members?limit=1000"
@@ -221,7 +222,13 @@ if password_input == TRAINER_PASSWORD:
                         added_count = 0
 
                         for m in discord_members:
+                            # Skip bots
                             if m.get("user", {}).get("bot", False):
+                                continue
+
+                            # Check if user has the specific role ID
+                            user_roles = m.get("roles", [])
+                            if str(ROLE_ID) not in [str(r) for r in user_roles]:
                                 continue
 
                             username = m.get("nick") or m.get("user", {}).get("global_name") or m.get("user", {}).get("username")
@@ -238,7 +245,7 @@ if password_input == TRAINER_PASSWORD:
                                     }).execute()
                                     added_count += 1
 
-                        st.sidebar.success(f"Synced! Added {added_count} new members.")
+                        st.sidebar.success(f"Synced! Added {added_count} role members.")
                         st.rerun()
                     else:
                         st.sidebar.error(f"Failed to fetch members. Error {res.status_code}: {res.text}")
@@ -282,7 +289,8 @@ if members_data:
         }
         for rank, member in enumerate(sorted_by_warnings, start=1)
     ]
-    st.dataframe(warnings_list, width=600, hide_index=True)
+    # Restrict height to 400px so it stays scrollable and tidy
+    st.dataframe(warnings_list, width=600, height=400, hide_index=True)
 else:
     st.info("No members registered in the database yet.")
 
@@ -304,7 +312,8 @@ if members_data:
         }
         for rank, player in enumerate(sorted_by_kills, start=1)
     ]
-    st.dataframe(koth_list, width=600, hide_index=True)
+    # Restrict height to 400px so it stays scrollable and tidy
+    st.dataframe(koth_list, width=600, height=400, hide_index=True)
 else:
     st.info("No member kill stats recorded yet.")
 
