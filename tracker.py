@@ -66,7 +66,8 @@ if password_input == TRAINER_PASSWORD:
             "Delete Member",
             "Manage Glads Match",
             "Manage TDMS Match",
-            "Set Active Channel Scan"
+            "Set Active Channel Scan",
+            "Sync Reaction Members"
         ]
     )
 
@@ -220,12 +221,74 @@ if password_input == TRAINER_PASSWORD:
                     "id": 1,
                     "event_name": evt_name,
                     "channel_id": c_id,
-                    "message_id": "",  # Dynamic lookup
+                    "message_id": "",
                     "emoji": emoji_val
                 }).execute()
 
                 st.sidebar.success("Auto-scan settings saved!")
                 st.rerun()
+
+    # ACTION 7: SYNC REACTION MEMBERS TO DATABASE
+    elif action == "Sync Reaction Members":
+        st.sidebar.subheader("📌 Sync Reaction Members to DB")
+        st.sidebar.caption("Imports reacted users directly into clan_members database.")
+
+        with st.sidebar.form("reaction_sync_form"):
+            channel_id = st.text_input("Discord Channel ID").strip()
+            message_id = st.text_input("Discord Message ID").strip()
+            target_emoji = st.text_input("Emoji (e.g. ✅)", value="✅").strip()
+
+            submit_sync = st.form_submit_button("Pull & Register Members")
+
+            if submit_sync:
+                BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+                GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+
+                if not BOT_TOKEN or not GUILD_ID:
+                    st.sidebar.error("Missing DISCORD_BOT_TOKEN or DISCORD_GUILD_ID in secrets!")
+                elif not channel_id or not message_id:
+                    st.sidebar.error("Please enter both Channel ID and Message ID!")
+                else:
+                    headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+                    encoded_emoji = quote(target_emoji)
+                    url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{encoded_emoji}?limit=100"
+
+                    res = requests.get(url, headers=headers)
+
+                    if res.status_code == 200:
+                        reacted_users = res.json()
+                        added_count = 0
+
+                        for u in reacted_users:
+                            if u.get("bot", False):
+                                continue
+
+                            user_id = u["id"]
+
+                            # Fetch server nickname if available
+                            member_res = requests.get(f"https://discord.com/api/v10/guilds/{GUILD_ID}/members/{user_id}", headers=headers)
+                            if member_res.status_code == 200:
+                                m = member_res.json()
+                                username = m.get("nick") or m.get("user", {}).get("global_name") or m.get("user", {}).get("username")
+                            else:
+                                username = u.get("global_name") or u.get("username")
+
+                            if username:
+                                existing = supabase.table("clan_members").select("*").eq("username", username).execute()
+
+                                if not existing.data:
+                                    supabase.table("clan_members").insert({
+                                        "username": username,
+                                        "xp": 0,
+                                        "kills": 0,
+                                        "warnings": 0
+                                    }).execute()
+                                    added_count += 1
+
+                        st.sidebar.success(f"Synced! Added {added_count} new members to the database.")
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"Failed to fetch reactions. Error {res.status_code}: {res.text}")
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
         st.sidebar.info("No members registered in the database yet.")
@@ -267,7 +330,6 @@ try:
         if BOT_TOKEN and GUILD_ID:
             headers = {"Authorization": f"Bot {BOT_TOKEN}"}
 
-            # Step A: Fetch the last 10 messages from the target channel
             messages_url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
             msg_res = requests.get(messages_url, headers=headers)
 
@@ -277,12 +339,10 @@ try:
                 recent_messages = msg_res.json()
                 for msg in recent_messages:
                     reactions = msg.get("reactions", [])
-                    # Find the newest message that has reactions matching target_emoji
                     if any(r.get("emoji", {}).get("name") == target_emoji for r in reactions) or reactions:
                         active_message_id = msg["id"]
                         break
 
-            # Step B: Fetch reaction users from the auto-detected message
             if active_message_id:
                 st.subheader(f"📋 Live Event Sign-ups: {evt['event_name']}")
                 encoded_emoji = quote(target_emoji)
