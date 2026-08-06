@@ -67,7 +67,7 @@ if password_input == TRAINER_PASSWORD:
             "Manage Glads Match",
             "Manage TDMS Match",
             "Set Active Channel Scan",
-            "Sync Reaction Members"
+            "Sync Members by Role"
         ]
     )
 
@@ -228,67 +228,62 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success("Auto-scan settings saved!")
                 st.rerun()
 
-    # ACTION 7: SYNC REACTION MEMBERS TO DATABASE
-    elif action == "Sync Reaction Members":
-        st.sidebar.subheader("📌 Sync Reaction Members to DB")
-        st.sidebar.caption("Imports reacted users directly into clan_members database.")
+    # ACTION 7: SYNC MEMBERS BY DISCORD ROLE
+    elif action == "Sync Members by Role":
+        st.sidebar.subheader("🎭 Sync Members by Discord Role")
+        st.sidebar.caption("Fetches all server members holding a specific Role ID and adds them to clan_members.")
 
-        with st.sidebar.form("reaction_sync_form"):
-            channel_id = st.text_input("Discord Channel ID").strip()
-            message_id = st.text_input("Discord Message ID").strip()
-            target_emoji = st.text_input("Emoji (e.g. ✅)", value="✅").strip()
+        with st.sidebar.form("role_sync_form"):
+            role_id_input = st.text_input("Discord Role ID").strip()
+            submit_role_sync = st.form_submit_button("Import Role Members")
 
-            submit_sync = st.form_submit_button("Pull & Register Members")
-
-            if submit_sync:
+            if submit_role_sync:
                 BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
                 GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
 
                 if not BOT_TOKEN or not GUILD_ID:
                     st.sidebar.error("Missing DISCORD_BOT_TOKEN or DISCORD_GUILD_ID in secrets!")
-                elif not channel_id or not message_id:
-                    st.sidebar.error("Please enter both Channel ID and Message ID!")
+                elif not role_id_input:
+                    st.sidebar.error("Please enter a valid Role ID!")
                 else:
                     headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-                    encoded_emoji = quote(target_emoji)
-                    url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{encoded_emoji}?limit=100"
-
-                    res = requests.get(url, headers=headers)
+                    # Fetch up to 1000 guild members
+                    guild_members_url = f"https://discord.com/api/v10/guilds/{GUILD_ID}/members?limit=1000"
+                    
+                    res = requests.get(guild_members_url, headers=headers)
 
                     if res.status_code == 200:
-                        reacted_users = res.json()
+                        all_members = res.json()
                         added_count = 0
+                        matched_count = 0
 
-                        for u in reacted_users:
-                            if u.get("bot", False):
+                        for m in all_members:
+                            user_obj = m.get("user", {})
+                            if user_obj.get("bot", False):
                                 continue
 
-                            user_id = u["id"]
+                            member_roles = m.get("roles", [])
+                            
+                            if role_id_input in member_roles:
+                                matched_count += 1
+                                username = m.get("nick") or user_obj.get("global_name") or user_obj.get("username")
 
-                            # Fetch server nickname if available
-                            member_res = requests.get(f"https://discord.com/api/v10/guilds/{GUILD_ID}/members/{user_id}", headers=headers)
-                            if member_res.status_code == 200:
-                                m = member_res.json()
-                                username = m.get("nick") or m.get("user", {}).get("global_name") or m.get("user", {}).get("username")
-                            else:
-                                username = u.get("global_name") or u.get("username")
+                                if username:
+                                    existing = supabase.table("clan_members").select("*").eq("username", username).execute()
 
-                            if username:
-                                existing = supabase.table("clan_members").select("*").eq("username", username).execute()
+                                    if not existing.data:
+                                        supabase.table("clan_members").insert({
+                                            "username": username,
+                                            "xp": 0,
+                                            "kills": 0,
+                                            "warnings": 0
+                                        }).execute()
+                                        added_count += 1
 
-                                if not existing.data:
-                                    supabase.table("clan_members").insert({
-                                        "username": username,
-                                        "xp": 0,
-                                        "kills": 0,
-                                        "warnings": 0
-                                    }).execute()
-                                    added_count += 1
-
-                        st.sidebar.success(f"Synced! Added {added_count} new members to the database.")
+                        st.sidebar.success(f"Synced! Found {matched_count} members with role, added {added_count} new members to DB.")
                         st.rerun()
                     else:
-                        st.sidebar.error(f"Failed to fetch reactions. Error {res.status_code}: {res.text}")
+                        st.sidebar.error(f"Failed to fetch server members. Error {res.status_code}: {res.text}")
 
     elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
         st.sidebar.info("No members registered in the database yet.")
