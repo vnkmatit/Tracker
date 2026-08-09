@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from streamlit_autorefresh import st_autorefresh
 from urllib.parse import quote
 import traceback
+import threading
+import asyncio
+import discord
 
 st.set_page_config(
     page_title="The Suilerua Bloodline tracker",
@@ -17,6 +20,37 @@ st_autorefresh(interval=10000, key="stats_refresh")
 
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now(timezone.utc)
+
+
+# --- KEEP DISCORD BOT ONLINE IN BACKGROUND ---
+@st.cache_resource
+def run_discord_bot():
+    def bot_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        intents = discord.Intents.default()
+        intents.members = True
+        client = discord.Client(intents=intents)
+
+        @client.event
+        async def on_ready():
+            print(f"✅ Bot is ONLINE in Discord as {client.user}")
+
+        token = st.secrets.get("DISCORD_BOT_TOKEN")
+        if token:
+            try:
+                loop.run_until_complete(client.start(token))
+            except Exception as e:
+                print(f"Bot failed to start: {e}")
+
+    thread = threading.Thread(target=bot_thread, daemon=True)
+    thread.start()
+    return thread
+
+# Start background connection (runs once when app starts)
+run_discord_bot()
+
 
 # --- DATABASE CONNECTION ---
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -266,6 +300,7 @@ if password_input == TRAINER_PASSWORD:
                             
                             if role_id_input in member_roles:
                                 matched_count += 1
+                                # Priority: Server Nickname -> Global Display Name -> Username
                                 username = m.get("nick") or user_obj.get("global_name") or user_obj.get("username")
 
                                 if username:
@@ -347,10 +382,26 @@ try:
                 if react_res.status_code == 200:
                     users = react_res.json()
                     attendees = []
+
                     for idx, u in enumerate(users, start=1):
                         if u.get("bot"):
                             continue
-                        name = u.get("global_name") or u.get("username")
+
+                        user_id = u["id"]
+
+                        # Fetch Guild Member API to get Server Nickname
+                        member_res = requests.get(
+                            f"https://discord.com/api/v10/guilds/{GUILD_ID}/members/{user_id}",
+                            headers=headers
+                        )
+
+                        if member_res.status_code == 200:
+                            m = member_res.json()
+                            # Priority: Server Nickname -> Global Display Name -> Username
+                            name = m.get("nick") or m.get("user", {}).get("global_name") or u.get("global_name") or u.get("username")
+                        else:
+                            name = u.get("global_name") or u.get("username")
+
                         attendees.append({"#": idx, "Attending Member": name})
 
                     if attendees:
