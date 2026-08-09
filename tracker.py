@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # Auto refresh every 10 seconds
-st_autorefresh(interval=10000, key="stats_refresh")
+st_autorefresh(interval=5000, key="stats_refresh")
 
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now(timezone.utc)
@@ -566,4 +566,4 @@ except Exception:
 
 # --- REFRESH STATUS ---
 st.session_state.last_refresh = datetime.now(timezone.utc)
-st.caption("Auto-refresh: every 10 seconds")
+st.caption("Auto-refresh: every 5 seconds")
