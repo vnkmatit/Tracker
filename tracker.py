@@ -64,6 +64,69 @@ except Exception as e:
     st.stop()
 
 
+# --- HELPER: FETCH CURRENT DISCORD EVENT ATTENDEES ---
+def get_current_event_attendees():
+    try:
+        evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
+        if not (evt_res.data and evt_res.data[0].get("channel_id")):
+            return []
+            
+        evt = evt_res.data[0]
+        channel_id = evt["channel_id"]
+        target_emoji = evt.get("emoji", "✅")
+
+        BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+        GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+
+        if not (BOT_TOKEN and GUILD_ID):
+            return []
+
+        headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+        messages_url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
+        msg_res = requests.get(messages_url, headers=headers)
+
+        if msg_res.status_code != 200:
+            return []
+
+        active_message_id = None
+        for msg in msg_res.json():
+            reactions = msg.get("reactions", [])
+            if any(r.get("emoji", {}).get("name") == target_emoji for r in reactions) or reactions:
+                active_message_id = msg["id"]
+                break
+
+        if not active_message_id:
+            return []
+
+        encoded_emoji = quote(target_emoji)
+        reactions_url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{active_message_id}/reactions/{encoded_emoji}?limit=100"
+        react_res = requests.get(reactions_url, headers=headers)
+
+        attendees = []
+        if react_res.status_code == 200:
+            users = react_res.json()
+            for u in users:
+                if u.get("bot"):
+                    continue
+                user_id = u["id"]
+                member_res = requests.get(
+                    f"https://discord.com/api/v10/guilds/{GUILD_ID}/members/{user_id}",
+                    headers=headers
+                )
+                if member_res.status_code == 200:
+                    m = member_res.json()
+                    name = m.get("nick") or m.get("user", {}).get("global_name") or u.get("global_name") or u.get("username")
+                else:
+                    name = u.get("global_name") or u.get("username")
+                
+                if name:
+                    attendees.append(name)
+
+        return attendees
+    except Exception:
+        return []
+
+
 # --- PAGE HEADER ---
 st.title("The Suilerua Bloodline dashboard")
 st.markdown(
@@ -121,10 +184,26 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
-    # ACTION 2: BATCH LOG STATS (MULTI-SELECT ENHANCEMENT)
+    # ACTION 2: LOG STATS (WITH EVENT ATTENDEE AUTO-SELECT)
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
+        st.sidebar.subheader("Log Stats")
+        
+        # Checkbox outside the form for instant interaction
+        auto_select_attendees = st.sidebar.checkbox("⚡ Auto-select Event Attendees", value=False)
+        
+        default_selected = []
+        if auto_select_attendees:
+            current_attendees = get_current_event_attendees()
+            default_selected = [u for u in current_attendees if u in existing_users]
+            st.sidebar.caption(f"Found {len(default_selected)} matching attendees in DB.")
+
         with st.sidebar.form("log_stats_form"):
-            selected_users = st.multiselect("Select Member(s)", existing_users, key="selected_users")
+            selected_users = st.multiselect(
+                "Select Member(s)", 
+                options=existing_users, 
+                default=default_selected,
+                key="selected_users"
+            )
             warnings_to_add = st.number_input("Warnings to Add", min_value=0, step=1)
             kills_to_add = st.number_input("Kills to Add", min_value=0, step=1)
             submit_stats = st.form_submit_button("Submit Training Records")
@@ -370,68 +449,18 @@ except Exception as e:
 # 1. LIVE EVENT ATTENDANCE BOARD (PUBLIC AUTO-SCAN)
 # ==========================================
 try:
+    attendees_names = get_current_event_attendees()
     evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
+    
     if evt_res.data and evt_res.data[0].get("channel_id"):
         evt = evt_res.data[0]
-        channel_id = evt["channel_id"]
-        target_emoji = evt.get("emoji", "✅")
-
-        BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
-        GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
-
-        if BOT_TOKEN and GUILD_ID:
-            headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-
-            messages_url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
-            msg_res = requests.get(messages_url, headers=headers)
-
-            active_message_id = None
-
-            if msg_res.status_code == 200:
-                recent_messages = msg_res.json()
-                for msg in recent_messages:
-                    reactions = msg.get("reactions", [])
-                    if any(r.get("emoji", {}).get("name") == target_emoji for r in reactions) or reactions:
-                        active_message_id = msg["id"]
-                        break
-
-            if active_message_id:
-                st.subheader(f"📋 Live Event Sign-ups: {evt['event_name']}")
-                encoded_emoji = quote(target_emoji)
-                reactions_url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{active_message_id}/reactions/{encoded_emoji}?limit=100"
-
-                react_res = requests.get(reactions_url, headers=headers)
-                if react_res.status_code == 200:
-                    users = react_res.json()
-                    attendees = []
-
-                    for idx, u in enumerate(users, start=1):
-                        if u.get("bot"):
-                            continue
-
-                        user_id = u["id"]
-
-                        member_res = requests.get(
-                            f"https://discord.com/api/v10/guilds/{GUILD_ID}/members/{user_id}",
-                            headers=headers
-                        )
-
-                        if member_res.status_code == 200:
-                            m = member_res.json()
-                            name = m.get("nick") or m.get("user", {}).get("global_name") or u.get("global_name") or u.get("username")
-                        else:
-                            name = u.get("global_name") or u.get("username")
-
-                        attendees.append({"#": idx, "Attending Member": name})
-
-                    if attendees:
-                        st.dataframe(attendees, width=500, height=300, hide_index=True)
-                    else:
-                        st.info("No reactions recorded yet for the latest message.")
-                else:
-                    st.warning("Failed to retrieve user reactions for the current message.")
-            else:
-                st.info(f"No recent messages with reaction '{target_emoji}' found in the channel.")
+        st.subheader(f"📋 Live Event Sign-ups: {evt['event_name']}")
+        
+        if attendees_names:
+            attendees_list = [{"#": idx, "Attending Member": name} for idx, name in enumerate(attendees_names, start=1)]
+            st.dataframe(attendees_list, width=500, height=300, hide_index=True)
+        else:
+            st.info("No reactions recorded yet for the latest message.")
 
         st.divider()
 except Exception:
