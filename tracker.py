@@ -184,45 +184,64 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
-    # ACTION 2: LOG STATS (WITH EVENT ATTENDEE AUTO-SELECT)
+    # ACTION 2: INDIVIDUAL STAT LOGGING FOR EVENT ATTENDEES
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
-        st.sidebar.subheader("Log Stats")
+        st.sidebar.subheader("Log Individual Stats")
         
-        # Checkbox outside the form for instant interaction
-        auto_select_attendees = st.sidebar.checkbox("⚡ Auto-select Event Attendees", value=False)
+        auto_select_attendees = st.sidebar.checkbox("⚡ Filter by Event Attendees", value=True)
         
         default_selected = []
         if auto_select_attendees:
             current_attendees = get_current_event_attendees()
             default_selected = [u for u in current_attendees if u in existing_users]
-            st.sidebar.caption(f"Found {len(default_selected)} matching attendees in DB.")
+            if not default_selected:
+                st.sidebar.caption("No event attendees found in DB. Select members manually below.")
+            else:
+                st.sidebar.caption(f"Pre-loaded {len(default_selected)} event attendee(s).")
+        else:
+            default_selected = []
 
-        with st.sidebar.form("log_stats_form"):
-            selected_users = st.multiselect(
-                "Select Member(s)", 
-                options=existing_users, 
-                default=default_selected,
-                key="selected_users"
-            )
-            warnings_to_add = st.number_input("Warnings to Add", min_value=0, step=1)
-            kills_to_add = st.number_input("Kills to Add", min_value=0, step=1)
-            submit_stats = st.form_submit_button("Submit Training Records")
+        selected_users = st.sidebar.multiselect(
+            "Select Attendees to Edit", 
+            options=existing_users, 
+            default=default_selected,
+            key="selected_users_stats"
+        )
 
-            if submit_stats:
-                if selected_users:
-                    for user in selected_users:
-                        current = supabase.table("clan_members").select("*").eq("username", user).execute().data[0]
-                        supabase.table("clan_members").update(
-                            {
-                                "warnings": current["warnings"] + warnings_to_add,
-                                "kills": current.get("kills", 0) + kills_to_add
-                            }
-                        ).eq("username", user).execute()
+        if selected_users:
+            with st.sidebar.form("log_stats_form"):
+                st.markdown("### Enter Stats per Member:")
+                stats_input = {}
 
-                    st.sidebar.success(f"Updated stats for {len(selected_users)} member(s)!")
+                for user in selected_users:
+                    st.markdown(f"**👤 {user}**")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        w_add = st.number_input("Warn (+)", min_value=0, step=1, key=f"w_{user}")
+                    with col2:
+                        k_add = st.number_input("Kills (+)", min_value=0, step=1, key=f"k_{user}")
+                    stats_input[user] = {"warnings": w_add, "kills": k_add}
+                    st.markdown("---")
+
+                submit_stats = st.form_submit_button("💾 Save All Member Stats")
+
+                if submit_stats:
+                    updated_count = 0
+                    for user, data in stats_input.items():
+                        if data["warnings"] > 0 or data["kills"] > 0:
+                            current = supabase.table("clan_members").select("*").eq("username", user).execute().data[0]
+                            supabase.table("clan_members").update(
+                                {
+                                    "warnings": current["warnings"] + data["warnings"],
+                                    "kills": current.get("kills", 0) + data["kills"]
+                                }
+                            ).eq("username", user).execute()
+                            updated_count += 1
+
+                    st.sidebar.success(f"Updated stats for {updated_count} member(s)!")
                     st.rerun()
-                else:
-                    st.sidebar.error("Please select at least one member.")
+        else:
+            st.sidebar.info("Select at least one member to adjust stats.")
 
     # ACTION 3: DELETE MEMBER
     elif action == "Delete Member" and existing_users:
