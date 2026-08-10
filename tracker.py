@@ -121,25 +121,29 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.success(f"Registered {new_user}!")
                 st.rerun()
 
-    # ACTION 2: LOG STATS
+    # ACTION 2: BATCH LOG STATS (MULTI-SELECT ENHANCEMENT)
     elif action == "Log Stats (Warnings & Kills)" and existing_users:
         with st.sidebar.form("log_stats_form"):
-            selected_user = st.selectbox("Select Member", existing_users, key="selected_user")
+            selected_users = st.multiselect("Select Member(s)", existing_users, key="selected_users")
             warnings_to_add = st.number_input("Warnings to Add", min_value=0, step=1)
             kills_to_add = st.number_input("Kills to Add", min_value=0, step=1)
             submit_stats = st.form_submit_button("Submit Training Records")
 
             if submit_stats:
-                current = supabase.table("clan_members").select("*").eq("username", selected_user).execute().data[0]
-                supabase.table("clan_members").update(
-                    {
-                        "warnings": current["warnings"] + warnings_to_add,
-                        "kills": current.get("kills", 0) + kills_to_add
-                    }
-                ).eq("username", selected_user).execute()
+                if selected_users:
+                    for user in selected_users:
+                        current = supabase.table("clan_members").select("*").eq("username", user).execute().data[0]
+                        supabase.table("clan_members").update(
+                            {
+                                "warnings": current["warnings"] + warnings_to_add,
+                                "kills": current.get("kills", 0) + kills_to_add
+                            }
+                        ).eq("username", user).execute()
 
-                st.sidebar.success(f"Updated stats for {selected_user}!")
-                st.rerun()
+                    st.sidebar.success(f"Updated stats for {len(selected_users)} member(s)!")
+                    st.rerun()
+                else:
+                    st.sidebar.error("Please select at least one member.")
 
     # ACTION 3: DELETE MEMBER
     elif action == "Delete Member" and existing_users:
