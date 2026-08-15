@@ -51,7 +51,7 @@ def run_discord_bot():
             # Check if it's the specific training channel
             if message.channel.id == 1477345427576717354:
                 # Check if message pings @everyone
-                if message.mention_everyone or "@everyone" in message.content:
+               if "@everyone" in message.content and "@here" not in message.content:
                     try:
                         await message.add_reaction("✅")
                     except Exception as e:
