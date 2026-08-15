@@ -51,7 +51,14 @@ def run_discord_bot():
             # Check if it's the specific training channel
             if message.channel.id == 1477345427576717354:
                 # Check if message pings @everyone
-               if "@everyone" in message.content and "@here" not in message.content:
+              # Check strictly for the Trainings role ping (ID: 1480587720442122431)
+            target_role_id = 1480587720442122431
+            has_training_role = (
+                any(role.id == target_role_id for role in message.role_mentions) 
+                or f"<@&{target_role_id}>" in message.content
+            )
+            
+            if has_training_role:
                     try:
                         await message.add_reaction("✅")
                     except Exception as e:
