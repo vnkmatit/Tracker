@@ -4,7 +4,7 @@ from supabase import create_client, Client
 from datetime import datetime, timezone
 from streamlit_autorefresh import st_autorefresh
 from urllib.parse import quote
-import traceback
+import re
 import threading
 import asyncio
 import discord
@@ -66,24 +66,98 @@ except Exception as e:
     st.stop()
 
 
+# --- HELPER: FETCH DISCORD MEMBER NAME-TO-ID MAP ---
+def get_discord_user_map():
+    """Fetches guild members and builds a dictionary mapping names/nicknames to Discord User IDs."""
+    BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+    GUILD_ID = st.secrets.get("DISCORD_GUILD_ID")
+    if not (BOT_TOKEN and GUILD_ID):
+        return {}
+
+    headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+    url = f"https://discord.com/api/v10/guilds/{GUILD_ID}/members?limit=1000"
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code != 200:
+            return {}
+        
+        members = res.json()
+        user_map = {}
+        for m in members:
+            u = m.get("user", {})
+            user_id = u.get("id")
+            if not user_id:
+                continue
+
+            # Store all possible name variations for accurate matching
+            names = [
+                m.get("nick"),
+                u.get("global_name"),
+                u.get("username")
+            ]
+            for n in names:
+                if n:
+                    user_map[n.strip().lower()] = user_id
+                    # Clean out special symbols for matching
+                    clean_name = re.sub(r'[^\w\s]', '', n).strip().lower()
+                    if clean_name:
+                        user_map[clean_name] = user_id
+
+        return user_map
+    except Exception:
+        return {}
+
+
+# --- HELPER: CONVERT TEXT NAMES TO REAL DISCORD PINGS ---
+def convert_to_discord_mentions(text_input: str, user_map: dict) -> str:
+    """Converts words starting with @ or plain usernames into <@USER_ID> mentions if found in user_map."""
+    if not text_input or not text_input.strip():
+        return ""
+
+    tokens = text_input.split()
+    converted = []
+
+    for token in tokens:
+        # If it's already a raw ID mention format <@1234567>, leave it as is
+        if re.match(r"^<@!?\d+>$", token):
+            converted.append(token)
+            continue
+
+        clean_token = token.lstrip("@").strip()
+        lookup_key = clean_token.lower()
+        clean_key = re.sub(r'[^\w\s]', '', clean_token).lower()
+
+        user_id = user_map.get(lookup_key) or user_map.get(clean_key)
+        if user_id:
+            converted.append(f"<@{user_id}>")
+        else:
+            converted.append(f"@{clean_token}")
+
+    return " ".join(converted)
+
+
 # --- HELPER: POST TRAINING LOG TO DISCORD CHANNEL ---
 def post_discord_message(channel_id: str, content: str):
     BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
-    if not BOT_TOKEN or not channel_id:
-        return False, "Missing Bot Token or Channel ID"
+    if not BOT_TOKEN:
+        return False, "Missing Bot Token in Secrets"
 
     headers = {
-        "Authorization": f"Bot {BOT_TOKEN}",
+        "Authorization": f"Bot {BOT_TOKEN.strip()}",
         "Content-Type": "application/json"
     }
     url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
     payload = {"content": content}
 
-    res = requests.post(url, headers=headers, json=payload)
-    if res.status_code in [200, 201]:
-        return True, "Successfully posted to Discord!"
-    else:
-        return False, f"Discord API Error ({res.status_code}): {res.text}"
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=10)
+        if res.status_code in [200, 201]:
+            return True, "Successfully posted to Discord!"
+        else:
+            return False, f"HTTP {res.status_code}: {res.text}"
+    except Exception as e:
+        return False, str(e)
 
 
 # --- HELPER: FETCH CURRENT DISCORD EVENT ATTENDEES ---
@@ -213,10 +287,10 @@ if password_input == TRAINER_PASSWORD:
         )
 
         with st.sidebar.form("training_log_form"):
-            training_num = st.text_input("Training Title / Number", value="Training 99")
+            training_num = st.text_input("Training Title / Number", value="Training 101")
             
-            host = st.text_input("Host Username/Mention", placeholder="@username1")
-            cohost = st.text_input("Co-Host Username/Mention", placeholder="@username2")
+            host = st.text_input("Host Username/Mention", placeholder="@username")
+            cohost = st.text_input("Co-Host Username/Mention", placeholder="@username")
 
             st.markdown("---")
             st.markdown("### Participant Stats (XP & Warnings):")
@@ -233,12 +307,12 @@ if password_input == TRAINER_PASSWORD:
 
             st.markdown("---")
             st.markdown("### Match Winners & Highlights:")
-            mvps = st.text_input("MVPs", placeholder="e.g. @username1")
-            koth = st.text_input("KOTH Winner", placeholder="e.g. @username1")
-            glads = st.text_input("Glads Participants/Winners", placeholder="e.g. @username1 @username2")
-            tdms = st.text_input("TDMS Winners", placeholder="e.g. @username1 @username2")
-            ffa = st.text_input("FFA Winner", placeholder="e.g. @username1")
-            twos = st.text_input("2s Winners", placeholder="e.g. @username1 @username2")
+            mvps = st.text_input("MVPs", placeholder="e.g. @username")
+            koth = st.text_input("KOTH Winner", placeholder="e.g. @username")
+            glads = st.text_input("Glads Participants/Winners", placeholder="e.g. @username")
+            tdms = st.text_input("TDMS Winners", placeholder="e.g. @username")
+            ffa = st.text_input("FFA Winner", placeholder="e.g. @username")
+            twos = st.text_input("2s Winners", placeholder="e.g. @username")
             notes = st.text_area("Notes / Comments", placeholder="e.g. DM me if I forgot you in the logs.")
 
             submit_training = st.form_submit_button("🚀 Save Stats & Post to Discord")
@@ -256,34 +330,38 @@ if password_input == TRAINER_PASSWORD:
                             "warnings": new_w
                         }).eq("username", user).execute()
 
-                # 2. Format Discord Message (Only inclusion of filled sections)
+                # 2. Build User Map for Discord Mentions (<@USER_ID>)
+                user_map = get_discord_user_map()
+
+                # 3. Format Discord Message
                 log_lines = [f"**{training_num}**\n"]
                 
                 if host.strip():
-                    log_lines.append(f"**Host:** {host.strip()}")
+                    log_lines.append(f"**Host:** {convert_to_discord_mentions(host, user_map)}")
                 if cohost.strip():
-                    log_lines.append(f"**Co-host:** {cohost.strip()}")
+                    log_lines.append(f"**Co-host:** {convert_to_discord_mentions(cohost, user_map)}")
 
                 if p_stats:
                     log_lines.append("\n**Participants:**")
                     for user, data in p_stats.items():
+                        mention = convert_to_discord_mentions(user, user_map)
                         w_str = f" w{data['warnings']}" if data['warnings'] > 0 else ""
-                        log_lines.append(f"@{user} {data['xp']}xp{w_str}")
+                        log_lines.append(f"{mention} {data['xp']}xp{w_str}")
 
-                # Optional Winner/Highlight Sections
+                # Optional Highlights
                 highlights = []
                 if mvps.strip():
-                    highlights.append(f"**Mvps:** {mvps.strip()}")
+                    highlights.append(f"**Mvps:** {convert_to_discord_mentions(mvps, user_map)}")
                 if koth.strip():
-                    highlights.append(f"**koth:** {koth.strip()}")
+                    highlights.append(f"**koth:** {convert_to_discord_mentions(koth, user_map)}")
                 if glads.strip():
-                    highlights.append(f"**Glads:** {glads.strip()}")
+                    highlights.append(f"**Glads:** {convert_to_discord_mentions(glads, user_map)}")
                 if tdms.strip():
-                    highlights.append(f"**Tdms:** {tdms.strip()}")
+                    highlights.append(f"**Tdms:** {convert_to_discord_mentions(tdms, user_map)}")
                 if ffa.strip():
-                    highlights.append(f"**Ffa:** {ffa.strip()}")
+                    highlights.append(f"**Ffa:** {convert_to_discord_mentions(ffa, user_map)}")
                 if twos.strip():
-                    highlights.append(f"**2s:** {twos.strip()}")
+                    highlights.append(f"**2s:** {convert_to_discord_mentions(twos, user_map)}")
 
                 if highlights:
                     log_lines.append("")
@@ -294,13 +372,13 @@ if password_input == TRAINER_PASSWORD:
 
                 full_message = "\n".join(log_lines)
 
-                # 3. Send to Fixed Discord Channel
+                # 4. Post Message
                 success, msg = post_discord_message(LOG_CHANNEL_ID, full_message)
                 if success:
-                    st.sidebar.success("Training logged in DB and posted to Discord!")
+                    st.success("✅ Training logged in DB and posted to Discord with user pings!")
                     st.rerun()
                 else:
-                    st.sidebar.error(f"Saved to DB, but Discord post failed: {msg}")
+                    st.error(f"⚠️ Saved to DB, but Discord post failed: {msg}")
 
     # ACTION 1: ADD / UPDATE MEMBER
     elif action == "Add/Update Member":
