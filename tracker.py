@@ -35,11 +35,27 @@ def run_discord_bot():
 
         intents = discord.Intents.default()
         intents.members = True
+        intents.message_content = True  # Required to read "@everyone"
         client = discord.Client(intents=intents)
 
         @client.event
         async def on_ready():
             print(f"✅ Bot is ONLINE in Discord as {client.user}")
+
+        @client.event
+        async def on_message(message):
+            # Ignore messages from the bot itself
+            if message.author == client.user:
+                return
+            
+            # Check if it's the specific training channel
+            if message.channel.id == 1477345427576717354:
+                # Check if message pings @everyone
+                if message.mention_everyone or "@everyone" in message.content:
+                    try:
+                        await message.add_reaction("✅")
+                    except Exception as e:
+                        print(f"Failed to add reaction: {e}")
 
         token = st.secrets.get("DISCORD_BOT_TOKEN")
         if token:
@@ -51,7 +67,6 @@ def run_discord_bot():
     thread = threading.Thread(target=bot_thread, daemon=True)
     thread.start()
     return thread
-
 
 run_discord_bot()
 
