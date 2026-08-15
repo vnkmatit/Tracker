@@ -48,7 +48,6 @@ def run_discord_bot():
     thread.start()
     return thread
 
-# Start background connection (runs once when app starts)
 run_discord_bot()
 
 
@@ -62,6 +61,26 @@ try:
 except Exception as e:
     st.exception(e)
     st.stop()
+
+
+# --- HELPER: POST TRAINING LOG TO DISCORD CHANNEL ---
+def post_discord_message(channel_id: str, content: str):
+    BOT_TOKEN = st.secrets.get("DISCORD_BOT_TOKEN")
+    if not BOT_TOKEN or not channel_id:
+        return False, "Missing Bot Token or Channel ID"
+
+    headers = {
+        "Authorization": f"Bot {BOT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    payload = {"content": content}
+
+    res = requests.post(url, headers=headers, json=payload)
+    if res.status_code in [200, 201]:
+        return True, "Successfully posted to Discord!"
+    else:
+        return False, f"Discord API Error ({res.status_code}): {res.text}"
 
 
 # --- HELPER: FETCH CURRENT DISCORD EVENT ATTENDEES ---
@@ -148,17 +167,16 @@ if password_input == TRAINER_PASSWORD:
 
     st.sidebar.success("Trainer Access Granted")
 
-    # Fetch members list for dropdown menus
     try:
         response = supabase.table("clan_members").select("username").execute()
         existing_users = [row["username"] for row in response.data]
     except Exception:
         existing_users = []
 
-    # Trainer Options
     action = st.sidebar.radio(
         "Choose Action",
         [
+            "Log & Post Training Session",
             "Add/Update Member",
             "Log Stats (Warnings & Kills)",
             "Delete Member",
@@ -171,8 +189,114 @@ if password_input == TRAINER_PASSWORD:
         key="trainer_action_radio"
     )
 
+    # ACTION: LOG & POST TRAINING SESSION TO DISCORD
+    if action == "Log & Post Training Session":
+        st.sidebar.subheader("📝 Log & Auto-Post Training")
+
+        try:
+            evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
+            default_log_channel = evt_res.data[0].get("channel_id", "") if evt_res.data else ""
+        except Exception:
+            default_log_channel = ""
+
+        auto_select_attendees = st.sidebar.checkbox("⚡ Filter by Event Attendees", value=True)
+        
+        default_selected = []
+        if auto_select_attendees:
+            current_attendees = get_current_event_attendees()
+            default_selected = [u for u in current_attendees if u in existing_users]
+            if default_selected:
+                st.sidebar.caption(f"Pre-loaded {len(default_selected)} event attendee(s).")
+
+        selected_users = st.sidebar.multiselect(
+            "Select Training Participants",
+            options=existing_users,
+            default=default_selected,
+            key="training_participants_select"
+        )
+
+        with st.sidebar.form("training_log_form"):
+            training_num = st.text_input("Training Title / Number", value="Training 99")
+            log_channel_id = st.text_input("Discord Log Channel ID", value=default_log_channel)
+            
+            host = st.text_input("Host Username/Mention", placeholder="@Kris")
+            cohost = st.text_input("Co-Host Username/Mention", placeholder="@RiceBall")
+
+            st.markdown("---")
+            st.markdown("### Participant Stats (XP & Warnings):")
+            p_stats = {}
+
+            for user in selected_users:
+                st.markdown(f"**👤 {user}**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    xp_gained = st.number_input("XP (+)", min_value=0, step=1, value=22, key=f"xp_{user}")
+                with col2:
+                    w_gained = st.number_input("Warn (+)", min_value=0, step=1, value=0, key=f"tw_{user}")
+                p_stats[user] = {"xp": xp_gained, "warnings": w_gained}
+
+            st.markdown("---")
+            st.markdown("### Match Winners & Highlights:")
+            mvps = st.text_input("MVPs", placeholder="e.g. @bleh")
+            koth = st.text_input("KOTH Winner", placeholder="e.g. @bleh")
+            glads = st.text_input("Glads Participants/Winners", placeholder="e.g. @bleh @velz")
+            ffa = st.text_input("FFA Winner", placeholder="e.g. @bleh")
+            twos = st.text_input("2s Winners", placeholder="e.g. @UhOh @gk")
+            notes = st.text_area("Notes / Comments", placeholder="e.g. dm me if I forgot you in the logs.")
+
+            submit_training = st.form_submit_button("🚀 Save Stats & Post to Discord")
+
+            if submit_training:
+                # 1. Update Database Stats
+                for user, data in p_stats.items():
+                    current = supabase.table("clan_members").select("*").eq("username", user).execute().data
+                    if current:
+                        curr_row = current[0]
+                        new_xp = curr_row.get("xp", 0) + data["xp"]
+                        new_w = curr_row.get("warnings", 0) + data["warnings"]
+                        supabase.table("clan_members").update({
+                            "xp": new_xp,
+                            "warnings": new_w
+                        }).eq("username", user).execute()
+
+                # 2. Format Discord Message
+                log_lines = [f"**{training_num}**\n"]
+                if host:
+                    log_lines.append(f"**Host:** {host}")
+                if cohost:
+                    log_lines.append(f"**Co-host:** {cohost}\n")
+
+                log_lines.append("**Participants:**")
+                for user, data in p_stats.items():
+                    w_str = f" w{data['warnings']}" if data['warnings'] > 0 else ""
+                    log_lines.append(f"@{user} {data['xp']}xp{w_str}")
+
+                log_lines.append("")
+                if mvps:
+                    log_lines.append(f"**Mvps:** {mvps}")
+                if koth:
+                    log_lines.append(f"**koth:** {koth}")
+                if glads:
+                    log_lines.append(f"**Glads:** {glads}")
+                if ffa:
+                    log_lines.append(f"**Ffa:** {ffa}")
+                if twos:
+                    log_lines.append(f"**2s:** {twos}")
+                if notes:
+                    log_lines.append(f"\n**Notes:** {notes}")
+
+                full_message = "\n".join(log_lines)
+
+                # 3. Send to Discord Channel
+                success, msg = post_discord_message(log_channel_id, full_message)
+                if success:
+                    st.sidebar.success("Training logged in DB and posted to Discord!")
+                    st.rerun()
+                else:
+                    st.sidebar.error(f"Saved to DB, but Discord post failed: {msg}")
+
     # ACTION 1: ADD / UPDATE MEMBER
-    if action == "Add/Update Member":
+    elif action == "Add/Update Member":
         with st.sidebar.form("add_member_form"):
             new_user = st.text_input("Roblox Username").strip()
             submit_member = st.form_submit_button("Register/Reset Member")
@@ -198,8 +322,6 @@ if password_input == TRAINER_PASSWORD:
                 st.sidebar.caption("No event attendees found in DB. Select members manually below.")
             else:
                 st.sidebar.caption(f"Pre-loaded {len(default_selected)} event attendee(s).")
-        else:
-            default_selected = []
 
         selected_users = st.sidebar.multiselect(
             "Select Attendees to Edit", 
@@ -240,8 +362,6 @@ if password_input == TRAINER_PASSWORD:
 
                     st.sidebar.success(f"Updated stats for {updated_count} member(s)!")
                     st.rerun()
-        else:
-            st.sidebar.info("Select at least one member to adjust stats.")
 
     # ACTION 3: DELETE MEMBER
     elif action == "Delete Member" and existing_users:
@@ -440,9 +560,6 @@ if password_input == TRAINER_PASSWORD:
                 else:
                     st.sidebar.error("Please check the confirmation box first.")
 
-    elif action in ["Log Stats (Warnings & Kills)", "Delete Member"] and not existing_users:
-        st.sidebar.info("No members registered in the database yet.")
-
 else:
     if password_input:
         st.sidebar.error("Incorrect Password")
@@ -465,7 +582,7 @@ except Exception as e:
 
 
 # ==========================================
-# 1. LIVE EVENT ATTENDANCE BOARD (PUBLIC AUTO-SCAN)
+# 1. LIVE EVENT ATTENDANCE BOARD
 # ==========================================
 try:
     attendees_names = get_current_event_attendees()
@@ -487,7 +604,29 @@ except Exception:
 
 
 # ==========================================
-# 2. WARNINGS LEADERBOARD
+# 2. XP LEADERBOARD
+# ==========================================
+st.subheader("⭐ Clan XP Leaderboard")
+
+if members_data:
+    sorted_by_xp = sorted(members_data, key=lambda x: x.get('xp', 0), reverse=True)
+    xp_list = [
+        {
+            "Rank": rank,
+            "Roblox Username": member["username"],
+            "Total XP": member.get("xp", 0)
+        }
+        for rank, member in enumerate(sorted_by_xp, start=1)
+    ]
+    st.dataframe(xp_list, width=600, height=400, hide_index=True)
+else:
+    st.info("No members registered in the database yet.")
+
+st.divider()
+
+
+# ==========================================
+# 3. WARNINGS LEADERBOARD
 # ==========================================
 st.subheader("Active training warnings")
 
@@ -509,7 +648,7 @@ st.divider()
 
 
 # ==========================================
-# 3. KING OF THE HILL LEADERBOARD
+# 4. KING OF THE HILL LEADERBOARD
 # ==========================================
 st.subheader("👑 KOTH Live Scoreboard")
 
@@ -531,7 +670,7 @@ st.divider()
 
 
 # ==========================================
-# 4. GLADS MATCH LIVE SCOREBOARD
+# 5. GLADS MATCH LIVE SCOREBOARD
 # ==========================================
 st.subheader("⚔️ Glads Live Scoreboard")
 
@@ -569,13 +708,13 @@ try:
         st.info("No Glads match is currently active.")
 
 except Exception:
-    st.info("Glads match table not initialized yet. Please run the SQL setup command in Supabase.")
+    st.info("Glads match table not initialized yet.")
 
 st.divider()
 
 
 # ==========================================
-# 5. TDMS MATCH LIVE SCOREBOARD
+# 6. TDMS MATCH LIVE SCOREBOARD
 # ==========================================
 st.subheader("🎯 TDM Live Scoreboard")
 
@@ -613,7 +752,7 @@ try:
         st.info("No TDMS match is currently active.")
 
 except Exception:
-    st.info("TDMS match table not initialized yet. Please run the SQL setup command in Supabase.")
+    st.info("TDMS match table not initialized yet.")
 
 
 # --- REFRESH STATUS ---
