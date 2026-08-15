@@ -21,6 +21,9 @@ st_autorefresh(interval=10000, key="stats_refresh")
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now(timezone.utc)
 
+# Fixed Channel ID for Training Logs
+LOG_CHANNEL_ID = "1477345559097512028"
+
 
 # --- KEEP DISCORD BOT ONLINE IN BACKGROUND ---
 @st.cache_resource
@@ -193,12 +196,6 @@ if password_input == TRAINER_PASSWORD:
     if action == "Log & Post Training Session":
         st.sidebar.subheader("📝 Log & Auto-Post Training")
 
-        try:
-            evt_res = supabase.table("event_settings").select("*").eq("id", 1).execute()
-            default_log_channel = evt_res.data[0].get("channel_id", "") if evt_res.data else ""
-        except Exception:
-            default_log_channel = ""
-
         auto_select_attendees = st.sidebar.checkbox("⚡ Filter by Event Attendees", value=True)
         
         default_selected = []
@@ -217,10 +214,9 @@ if password_input == TRAINER_PASSWORD:
 
         with st.sidebar.form("training_log_form"):
             training_num = st.text_input("Training Title / Number", value="Training 99")
-            log_channel_id = st.text_input("Discord Log Channel ID", value=default_log_channel)
             
-            host = st.text_input("Host Username/Mention", placeholder="@Kris")
-            cohost = st.text_input("Co-Host Username/Mention", placeholder="@RiceBall")
+            host = st.text_input("Host Username/Mention", placeholder="@username1")
+            cohost = st.text_input("Co-Host Username/Mention", placeholder="@username2")
 
             st.markdown("---")
             st.markdown("### Participant Stats (XP & Warnings):")
@@ -237,12 +233,13 @@ if password_input == TRAINER_PASSWORD:
 
             st.markdown("---")
             st.markdown("### Match Winners & Highlights:")
-            mvps = st.text_input("MVPs", placeholder="e.g. @bleh")
-            koth = st.text_input("KOTH Winner", placeholder="e.g. @bleh")
-            glads = st.text_input("Glads Participants/Winners", placeholder="e.g. @bleh @velz")
-            ffa = st.text_input("FFA Winner", placeholder="e.g. @bleh")
-            twos = st.text_input("2s Winners", placeholder="e.g. @UhOh @gk")
-            notes = st.text_area("Notes / Comments", placeholder="e.g. dm me if I forgot you in the logs.")
+            mvps = st.text_input("MVPs", placeholder="e.g. @username1")
+            koth = st.text_input("KOTH Winner", placeholder="e.g. @username1")
+            glads = st.text_input("Glads Participants/Winners", placeholder="e.g. @username1 @username2")
+            tdms = st.text_input("TDMS Winners", placeholder="e.g. @username1 @username2")
+            ffa = st.text_input("FFA Winner", placeholder="e.g. @username1")
+            twos = st.text_input("2s Winners", placeholder="e.g. @username1 @username2")
+            notes = st.text_area("Notes / Comments", placeholder="e.g. DM me if I forgot you in the logs.")
 
             submit_training = st.form_submit_button("🚀 Save Stats & Post to Discord")
 
@@ -259,36 +256,46 @@ if password_input == TRAINER_PASSWORD:
                             "warnings": new_w
                         }).eq("username", user).execute()
 
-                # 2. Format Discord Message
+                # 2. Format Discord Message (Only inclusion of filled sections)
                 log_lines = [f"**{training_num}**\n"]
-                if host:
-                    log_lines.append(f"**Host:** {host}")
-                if cohost:
-                    log_lines.append(f"**Co-host:** {cohost}\n")
+                
+                if host.strip():
+                    log_lines.append(f"**Host:** {host.strip()}")
+                if cohost.strip():
+                    log_lines.append(f"**Co-host:** {cohost.strip()}")
 
-                log_lines.append("**Participants:**")
-                for user, data in p_stats.items():
-                    w_str = f" w{data['warnings']}" if data['warnings'] > 0 else ""
-                    log_lines.append(f"@{user} {data['xp']}xp{w_str}")
+                if p_stats:
+                    log_lines.append("\n**Participants:**")
+                    for user, data in p_stats.items():
+                        w_str = f" w{data['warnings']}" if data['warnings'] > 0 else ""
+                        log_lines.append(f"@{user} {data['xp']}xp{w_str}")
 
-                log_lines.append("")
-                if mvps:
-                    log_lines.append(f"**Mvps:** {mvps}")
-                if koth:
-                    log_lines.append(f"**koth:** {koth}")
-                if glads:
-                    log_lines.append(f"**Glads:** {glads}")
-                if ffa:
-                    log_lines.append(f"**Ffa:** {ffa}")
-                if twos:
-                    log_lines.append(f"**2s:** {twos}")
-                if notes:
-                    log_lines.append(f"\n**Notes:** {notes}")
+                # Optional Winner/Highlight Sections
+                highlights = []
+                if mvps.strip():
+                    highlights.append(f"**Mvps:** {mvps.strip()}")
+                if koth.strip():
+                    highlights.append(f"**koth:** {koth.strip()}")
+                if glads.strip():
+                    highlights.append(f"**Glads:** {glads.strip()}")
+                if tdms.strip():
+                    highlights.append(f"**Tdms:** {tdms.strip()}")
+                if ffa.strip():
+                    highlights.append(f"**Ffa:** {ffa.strip()}")
+                if twos.strip():
+                    highlights.append(f"**2s:** {twos.strip()}")
+
+                if highlights:
+                    log_lines.append("")
+                    log_lines.extend(highlights)
+
+                if notes.strip():
+                    log_lines.append(f"\n**Notes:** {notes.strip()}")
 
                 full_message = "\n".join(log_lines)
 
-                # 3. Send to Discord Channel
-                success, msg = post_discord_message(log_channel_id, full_message)
+                # 3. Send to Fixed Discord Channel
+                success, msg = post_discord_message(LOG_CHANNEL_ID, full_message)
                 if success:
                     st.sidebar.success("Training logged in DB and posted to Discord!")
                     st.rerun()
