@@ -928,28 +928,7 @@ except Exception:
     pass
 
 
-# ==========================================
-# 2. XP LEADERBOARD
-# ==========================================
-st.subheader("⭐ Clan XP Leaderboard")
 
-if members_data:
-    sorted_by_xp = sorted(
-        members_data, key=lambda x: x.get("xp", 0), reverse=True
-    )
-    xp_list = [
-        {
-            "Rank": rank,
-            "Roblox Username": member["username"],
-            "Total XP": member.get("xp", 0),
-        }
-        for rank, member in enumerate(sorted_by_xp, start=1)
-    ]
-    st.dataframe(xp_list, width=600, height=400, hide_index=True)
-else:
-    st.info("No members registered in the database yet.")
-
-st.divider()
 
 
 # ==========================================
