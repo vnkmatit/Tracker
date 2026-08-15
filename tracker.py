@@ -35,7 +35,7 @@ def run_discord_bot():
 
         intents = discord.Intents.default()
         intents.members = True
-        intents.message_content = True  # Required to read role pings
+        intents.message_content = True  # Required to read "@everyone"
         client = discord.Client(intents=intents)
 
         @client.event
@@ -50,8 +50,8 @@ def run_discord_bot():
 
             # Check if it's the specific training channel
             if message.channel.id == 1477345427576717354:
-              # Check strictly for @everyone text (ignores @here and role/user pings)
-            if "@everyone" in message.content and "@here" not in message.content:
+                # Check strictly for @everyone text
+                if "@everyone" in message.content:
                     try:
                         await message.add_reaction("✅")
                     except Exception as e:
